@@ -1,0 +1,169 @@
+# =============================================================================
+# Application: monitoring (kube-prometheus-stack)
+# -----------------------------------------------------------------------------
+# Installs Prometheus + Alertmanager + Grafana + node-exporter + kube-state-metrics
+# from the prometheus-community Helm repo into the `monitoring` namespace.
+#
+# All three UIs (Grafana, Prometheus, Alertmanager) are exposed under
+# sub-paths on the existing Traefik LB (NOT separate hosts or LBs):
+#   http://vijaygiduthuri.in/grafana/
+#   http://vijaygiduthuri.in/prometheus/
+#   http://vijaygiduthuri.in/alertmanager/
+#
+# The Traefik IngressRoute objects themselves live in
+# helm/cloudkitchen/templates/observability-ingressroute.yaml — this file
+# only configures the kube-prom-stack chart to serve correctly under those
+# sub-paths (root_url, routePrefix, externalUrl).
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloudkitchen
+
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 62.3.0 # pin chart version; bump deliberately
+    helm:
+      values: |
+        fullnameOverride: kube-prometheus
+
+        # ---------------------------------------------------------------
+        # GKE has a MANAGED control plane — etcd, kube-scheduler,
+        # kube-controller-manager, kube-proxy, coredns all run inside
+        # Google's infrastructure and are NOT scrape-able from a node.
+        # The kube-prom-stack chart tries to create Services for them
+        # in kube-system by default; on GKE those services would just
+        # point at endpoints that don't exist. Turn them all off.
+        # ---------------------------------------------------------------
+        kubeEtcd:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        coreDns:
+          enabled: false
+
+        # ---------------------------------------------------------------
+        # Grafana — served at /grafana via Traefik IngressRoute (external
+        # to this chart). The chart's bundled Ingress is DISABLED.
+        # ---------------------------------------------------------------
+        grafana:
+          enabled: true
+          defaultDashboardsEnabled: true
+          # Bundled chart Ingress turned off — we use a Traefik IngressRoute
+          # instead (defined in helm/cloudkitchen/templates/observability-ingressroute.yaml).
+          ingress:
+            enabled: false
+          # Sub-path serving config — Grafana's internal URLs need to be
+          # aware that they live at /grafana/, otherwise asset paths,
+          # redirects, and login URLs all break.
+          grafana.ini:
+            server:
+              domain: vijaygiduthuri.in
+              root_url: "http://vijaygiduthuri.in/grafana/"
+              serve_from_sub_path: true
+          # Auto-add Loki as a datasource so log panels work out of the box.
+          # (The default Prometheus datasource is added by the chart already.)
+          additionalDataSources:
+            - name: Loki
+              type: loki
+              uid: loki
+              access: proxy
+              # Service name is `logging-loki` (the loki-stack chart prefixes
+              # everything with the release name "logging"). Don't write 'loki'.
+              url: http://logging-loki.logging.svc.cluster.local:3100
+              isDefault: false
+              jsonData:
+                maxLines: 1000
+          # Default admin password stays at 'prom-operator' (chart default).
+          # Change it via UI on first login, then optionally remove the
+          # bootstrap by setting admin.existingSecret here.
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+        # ---------------------------------------------------------------
+        # Prometheus — served at /prometheus via Traefik IngressRoute.
+        # routePrefix + externalUrl together make every Prometheus link
+        # render with the /prometheus prefix.
+        # ---------------------------------------------------------------
+        prometheus:
+          prometheusSpec:
+            retention: 15d
+            routePrefix: /prometheus
+            externalUrl: http://vijaygiduthuri.in/prometheus
+            # Discover ServiceMonitors / PodMonitors across all namespaces
+            # (so anything we drop in cloudkitchen ns gets scraped).
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
+            resources:
+              requests:
+                cpu: 250m
+                memory: 512Mi
+              limits:
+                cpu: "1"
+                memory: 2Gi
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 20Gi
+
+        # ---------------------------------------------------------------
+        # Alertmanager — served at /alertmanager via Traefik IngressRoute.
+        # ---------------------------------------------------------------
+        alertmanager:
+          enabled: true
+          alertmanagerSpec:
+            routePrefix: /alertmanager
+            externalUrl: http://vijaygiduthuri.in/alertmanager
+            resources:
+              requests:
+                cpu: 25m
+                memory: 64Mi
+              limits:
+                cpu: 100m
+                memory: 128Mi
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  # StatefulSet (Prometheus + Alertmanager) volumeClaimTemplates are
+  # immutable after creation — same trap that hit our cloudkitchen App.
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # kube-prometheus-stack ships very large CRDs; SSA avoids the annotation limit.
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m

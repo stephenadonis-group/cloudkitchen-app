@@ -1,0 +1,76 @@
+# loki-values.yaml
+# -----------------------------------------------------------------------------
+# Helm values for Grafana Loki (grafana/loki chart, single-binary mode).
+#
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm upgrade --install loki grafana/loki \
+#     -n logging --create-namespace -f logging/loki-values.yaml
+#
+# Single-binary deployment is appropriate for a small/medium cluster. For
+# production scale, switch deploymentMode to SimpleScalable or Distributed and
+# back the chunk store with S3 (us-east-1).
+# -----------------------------------------------------------------------------
+
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+
+  commonConfig:
+    replication_factor: 1
+
+  schemaConfig:
+    configs:
+      - from: "2024-01-01"
+        store: tsdb
+        object_store: filesystem      # swap to 's3' for production
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+
+  limits_config:
+    retention_period: 168h            # 7 days
+    reject_old_samples: true
+    reject_old_samples_max_age: 168h
+    max_query_series: 5000
+    allow_structured_metadata: true
+
+  storage:
+    type: filesystem
+    # For production (S3 in us-east-1):
+    # type: s3
+    # bucketNames:
+    #   chunks: cloudkitchen-loki-chunks
+    #   ruler: cloudkitchen-loki-ruler
+    # s3:
+    #   region: us-east-1
+    # (use IRSA — annotate the Loki service account with the IAM role ARN)
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 20Gi
+
+# Disable the scalable-mode components in single-binary deployments.
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
+# We run Promtail separately (see promtail-values.yaml); disable the bundled
+# self-monitoring / canary to keep the footprint small.
+monitoring:
+  selfMonitoring:
+    enabled: false
+  lokiCanary:
+    enabled: false
+
+test:
+  enabled: false
+
+gateway:
+  enabled: true

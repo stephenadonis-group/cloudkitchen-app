@@ -1,0 +1,85 @@
+# =============================================================================
+# ArgoCD AppProject: "cloudkitchen"
+# -----------------------------------------------------------------------------
+# An AppProject is a logical grouping/guardrail for ArgoCD Applications. It
+# restricts WHICH git repos may be deployed, INTO WHICH clusters/namespaces, and
+# WHICH Kubernetes resource kinds are permitted. Every Application below
+# references this project via `spec.project: cloudkitchen`.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: cloudkitchen
+  namespace: argocd # AppProjects always live in the argocd control-plane namespace
+  # Finalizer ensures child Applications are cleaned up before the project is removed.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: CloudKitchen platform project (microservices + platform add-ons)
+
+  # ---------------------------------------------------------------------------
+  # Allowed source repositories. CI/CD and ArgoCD may only deploy from these.
+  # NOTE: Replace the placeholder repoURL with your real Git repository URL.
+  # ---------------------------------------------------------------------------
+  sourceRepos:
+    - https://github.com/vijaygiduthuri/cloudkitchen-app.git # <-- REPLACE with real repo URL
+    # Helm chart registries used by the platform add-on Applications:
+    - https://helm.traefik.io/traefik
+    - https://charts.jetstack.io
+    - https://prometheus-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
+
+  # ---------------------------------------------------------------------------
+  # Allowed deployment destinations (cluster + namespace).
+  # The 5 platform namespaces are whitelisted on the in-cluster API server.
+  # ---------------------------------------------------------------------------
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: cloudkitchen
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: logging
+    - server: https://kubernetes.default.svc
+      namespace: ingress
+    - server: https://kubernetes.default.svc
+      namespace: argocd
+
+  # ---------------------------------------------------------------------------
+  # Cluster-scoped resources ArgoCD is allowed to create (whitelist).
+  # Add-ons like cert-manager / kube-prometheus-stack install CRDs, ClusterRoles,
+  # webhooks, namespaces, etc., so we permit the common cluster-scoped kinds.
+  # ---------------------------------------------------------------------------
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRole
+    - group: rbac.authorization.k8s.io
+      kind: ClusterRoleBinding
+    - group: admissionregistration.k8s.io
+      kind: ValidatingWebhookConfiguration
+    - group: admissionregistration.k8s.io
+      kind: MutatingWebhookConfiguration
+    - group: storage.k8s.io
+      kind: StorageClass
+    - group: scheduling.k8s.io
+      kind: PriorityClass
+    - group: apiregistration.k8s.io
+      kind: APIService
+
+  # ---------------------------------------------------------------------------
+  # Namespaced resources allowed inside the destination namespaces.
+  # "*"/"*" permits all common kinds (Deployments, Services, ConfigMaps,
+  # Secrets, Ingress, HPA, PVC, ServiceMonitors, etc.). Tighten if required.
+  # ---------------------------------------------------------------------------
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Allow Applications belonging to this project to be defined in the argocd ns
+  # (required for the App-of-Apps pattern where child Apps are committed to git).
+  sourceNamespaces:
+    - argocd

@@ -1,0 +1,48 @@
+# =============================================================================
+# HTTP -> HTTPS redirect (catches everything on the `web` entrypoint).
+#
+# After Phase 7 flipped every IngressRoute to `entryPoints: [websecure]`,
+# plain HTTP requests (port 80) had no matching route → Traefik returned
+# 404 page not found.  This pair fixes that:
+#
+#   1. A Middleware `redirect-to-https` that emits a 308 to https://<same-host>
+#   2. A wildcard IngressRoute on `entryPoints: [web]` that matches ANY host,
+#      applies the middleware, and (formally) terminates at frontend-service
+#      — though the redirect short-circuits before the backend is ever called.
+#
+# Apply with:
+#   kubectl apply -f monitoring/http-to-https-redirect.yaml
+# =============================================================================
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-to-https
+  namespace: cloudkitchen
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true   # 308 Permanent Redirect (cacheable; clients remember)
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: http-to-https-redirect
+  namespace: cloudkitchen
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  entryPoints:
+    - web                              # ONLY HTTP — TLS routes still bypass this
+  routes:
+    - match: HostRegexp(`.+`)          # matches every host (Traefik 3 syntax)
+      kind: Rule
+      priority: 1                       # lowest priority so any explicit HTTP
+                                        # route (e.g. cert-manager's HTTP-01
+                                        # challenge) wins
+      middlewares:
+        - name: redirect-to-https
+      services:
+        - name: frontend-service        # never actually reached — the
+          port: 80                      # redirect middleware short-circuits

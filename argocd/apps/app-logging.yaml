@@ -1,0 +1,60 @@
+# =============================================================================
+# Application: logging (Loki + Promtail)
+# -----------------------------------------------------------------------------
+# Installs Grafana Loki (log store) with the Promtail agent to ship container
+# logs, from the Grafana Helm repo into the `logging` namespace.
+# Uses the `loki-stack` chart which bundles Loki + Promtail in one release.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: logging
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloudkitchen
+
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki-stack
+    targetRevision: 2.10.2 # pin chart version; bump deliberately
+    helm:
+      values: |
+        # ---- minimal sensible defaults ----
+        loki:
+          enabled: true
+          persistence:
+            enabled: true
+            size: 20Gi
+          config:
+            limits_config:
+              retention_period: 168h # 7 days
+        promtail:
+          enabled: true # DaemonSet that tails container logs on every node
+          # The loki-stack chart's actual key for the Loki URL is
+          #   promtail.config.clients[].url
+          # (verified via 'helm show values grafana/loki-stack --version 2.10.2').
+          # The default renders as 'http://<release>:3100/...' = 'http://logging:3100'
+          # but the actual Loki Service is 'logging-loki:3100' (the chart's
+          # template adds a '-loki' suffix on the Loki side but NOT on this URL).
+          # Replace the entire clients list (Helm replaces lists, doesn't merge them)
+          # so the default disappears.
+          config:
+            clients:
+              - url: http://logging-loki:3100/loki/api/v1/push
+        # Grafana is provided by the monitoring stack, so disable the bundled one
+        # and add Loki as a Grafana datasource there instead.
+        grafana:
+          enabled: false
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

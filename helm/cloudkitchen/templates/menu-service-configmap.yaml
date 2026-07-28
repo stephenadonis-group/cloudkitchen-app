@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: menu-service-config
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: menu-service
+data:
+  SERVICE_NAME: "menu-service"
+  PORT: "{{ .Values.menuService.port }}"
+  LOG_LEVEL: "info"
+  DB_HOST: {{ .Values.db.host | quote }}
+  DB_PORT: {{ .Values.db.port | quote }}
+  DB_NAME: {{ .Values.db.name | quote }}
+  DB_SCHEMA: "menu"
+  DB_SSLMODE: {{ .Values.db.sslmode | quote }}
+  REDIS_ADDR: "{{ .Values.redis.servicename }}:{{ .Values.redis.port }}"
+  RESTAURANT_SERVICE_URL: "http://{{ .Values.restaurantService.servicename }}:{{ .Values.restaurantService.port }}"

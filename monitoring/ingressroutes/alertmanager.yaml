@@ -1,0 +1,23 @@
+# =============================================================================
+# Traefik IngressRoute exposing alertmanager at  http://<host>/alertmanager/
+# Backend: kube-prometheus-alertmanager:9093
+#
+# Apply with:
+#   kubectl apply -f monitoring/ingressroutes/alertmanager.yaml
+# =============================================================================
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: alertmanager
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/alertmanager`)
+      kind: Rule
+      services:
+        - name: kube-prometheus-alertmanager
+          port: 9093

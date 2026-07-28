@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.postgres.servicename }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: postgres
+spec:
+  clusterIP: None          # headless service governs the StatefulSet
+  selector:
+    app: postgres
+  ports:
+  - name: postgres
+    port: {{ .Values.postgres.port }}
+    targetPort: {{ .Values.postgres.port }}

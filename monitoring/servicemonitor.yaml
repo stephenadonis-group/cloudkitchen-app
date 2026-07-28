@@ -1,0 +1,44 @@
+# =============================================================================
+# ServiceMonitor — tells Prometheus to scrape every cloudkitchen backend.
+#
+# All 8 Go services (auth/user/restaurant/menu/order/payment/delivery/notification)
+# share the label  app.kubernetes.io/part-of: cloudkitchen  on their Services,
+# and each exposes /metrics on the named port `http` (port 8080).
+#
+# The kube-prometheus-stack Prometheus is configured with
+#   serviceMonitorSelectorNilUsesHelmValues: false
+# so it discovers ServiceMonitors in ANY namespace — this file is enough.
+#
+# Apply:
+#   kubectl apply -f monitoring/servicemonitor.yaml
+# =============================================================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cloudkitchen-services
+  namespace: cloudkitchen
+  labels:
+    # If anyone ever flips serviceMonitorSelectorNilUsesHelmValues back to
+    # true, the chart's default serviceMonitorSelector is
+    # {release: <Helm release name>}. Our ArgoCD App is named `monitoring`
+    # so the release name is `monitoring`. Today this label is decorative
+    # (the selector is nil-overridden in chart values) — but if someone
+    # tightens it later, this matches.
+    release: monitoring
+  annotations:
+    # Keep this resource alive even though it's not tracked by an ArgoCD App.
+    # (We chose to apply it manually rather than via the cloudkitchen helm
+    # chart — see docs/gcp/06-monitoring-and-logging.md Step 6.)
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  namespaceSelector:
+    matchNames:
+      - cloudkitchen
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: cloudkitchen
+  endpoints:
+    - port: http             # the Service port NAME, not the number
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

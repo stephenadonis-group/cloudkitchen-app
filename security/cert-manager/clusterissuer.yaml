@@ -1,0 +1,30 @@
+# =============================================================================
+# Let's Encrypt ClusterIssuer (HTTP-01 challenge via Traefik).
+#
+# This single Issuer requests real, browser-trusted certificates from
+# Let's Encrypt's production ACME API. Apply once; cert-manager keeps any
+# Certificate that references it (by issuerRef.name) renewed automatically.
+#
+# Prereqs:
+#   - cert-manager installed (Step 1 of docs/gcp/07)
+#   - Traefik running as the cluster ingress (ingressClassName: traefik)
+#   - Port 80 reachable from the public internet so Let's Encrypt can
+#     solve the HTTP-01 challenge
+#
+# Apply with:
+#   kubectl apply -f security/cert-manager/clusterissuer.yaml
+# =============================================================================
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@cloudkitchen.example.com   # 👈 your real email — used for expiry notices
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: traefik

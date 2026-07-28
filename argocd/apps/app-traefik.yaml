@@ -1,0 +1,60 @@
+# =============================================================================
+# Application: traefik (ingress controller)
+# -----------------------------------------------------------------------------
+# Installs Traefik from its official Helm repo into the `ingress` namespace.
+# Traefik fronts the platform and terminates TLS (certs issued by cert-manager).
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloudkitchen
+
+  source:
+    repoURL: https://helm.traefik.io/traefik # official Traefik Helm repo
+    chart: traefik
+    targetRevision: 28.3.0 # pin chart version (Traefik v3.x); bump deliberately
+    helm:
+      values: |
+        # ---- minimal sensible defaults ----
+        deployment:
+          replicas: 2
+        service:
+          type: LoadBalancer # provisions an AWS NLB/ELB in us-east-1
+        ingressClass:
+          enabled: true
+          isDefaultClass: true
+        ports:
+          web:
+            redirectTo:
+              port: websecure # force HTTP -> HTTPS
+          websecure:
+            tls:
+              enabled: true
+        providers:
+          kubernetesIngress:
+            enabled: true
+          kubernetesCRD:
+            enabled: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

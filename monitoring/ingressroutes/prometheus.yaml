@@ -1,0 +1,23 @@
+# =============================================================================
+# Traefik IngressRoute exposing prometheus at  http://<host>/prometheus/
+# Backend: kube-prometheus-prometheus:9090
+#
+# Apply with:
+#   kubectl apply -f monitoring/ingressroutes/prometheus.yaml
+# =============================================================================
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: prometheus
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/prometheus`)
+      kind: Rule
+      services:
+        - name: kube-prometheus-prometheus
+          port: 9090

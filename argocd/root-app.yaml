@@ -1,0 +1,40 @@
+# =============================================================================
+# Root Application (App-of-Apps pattern)
+# -----------------------------------------------------------------------------
+# This single Application watches the `argocd/apps` directory in the repo. Every
+# YAML file in that directory is itself an ArgoCD Application. So syncing this
+# one root Application bootstraps ALL the platform Applications (cloudkitchen,
+# traefik, cert-manager, monitoring, logging) in one shot.
+#
+# Bootstrap:  kubectl apply -n argocd -f argocd/root-app.yaml
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudkitchen-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloudkitchen
+
+  source:
+    # NOTE: Replace with your real Git repository URL.
+    repoURL: https://github.com/vijaygiduthuri/cloudkitchen-app.git # <-- REPLACE
+    targetRevision: main
+    # Directory source: ArgoCD renders every manifest under argocd/apps as a
+    # child Application (the App-of-Apps "fan out").
+    path: argocd/apps
+    directory:
+      recurse: true
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      prune: true # delete child Apps removed from git
+      selfHeal: true # revert manual drift back to git state
+    syncOptions:
+      - CreateNamespace=true

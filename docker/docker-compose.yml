@@ -1,0 +1,217 @@
+# docker-compose.yml
+# -----------------------------------------------------------------------------
+# Full local CloudKitchen stack: backing services + 8 Go microservices + the
+# React frontend. Run from the repo root:
+#
+#     docker compose -f docker/docker-compose.yml up --build
+#
+# Build context paths (./auth, ./user, ...) are relative to the repo root, so
+# either run from the root with -f as above, or set COMPOSE_FILE.
+#
+# Host port map:
+#   auth         8081 -> 8080      payment       8086 -> 8080
+#   user         8082 -> 8080      delivery      8087 -> 8080
+#   restaurant   8083 -> 8080      notification  8088 -> 8080
+#   menu         8084 -> 8080      frontend      3000 -> 80
+#   order        8085 -> 8080
+#   postgres     5432   redis 6379   nats 4222 (+ http monitor 8222)
+# -----------------------------------------------------------------------------
+
+name: cloudkitchen
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  networks: [cloudkitchen]
+  environment: &service-env
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_USER: cloudkitchen
+    DB_PASSWORD: cloudkitchen
+    DB_NAME: cloudkitchen
+    REDIS_ADDR: redis:6379
+    # NATS (JetStream) — single client URL, no auth in local dev.
+    NATS_URL: nats://nats:4222
+    JWT_SECRET: local-dev-only-change-me
+    JWT_EXPIRY: 24h
+    LOG_LEVEL: info
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    nats:
+      condition: service_healthy
+
+# NOTE: the service images are distroless (no shell, no wget/curl), so an
+# in-container HTTP healthcheck isn't possible. We rely on the app's own
+# /healthz endpoint, reachable from the host on each service's mapped port.
+# (Infra services below keep healthchecks — their images include the tools.)
+
+services:
+  # ===========================================================================
+  # Backing services
+  # ===========================================================================
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    networks: [cloudkitchen]
+    environment:
+      POSTGRES_USER: cloudkitchen
+      POSTGRES_PASSWORD: cloudkitchen
+      POSTGRES_DB: cloudkitchen
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudkitchen -d cloudkitchen"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    networks: [cloudkitchen]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    networks: [cloudkitchen]
+    # JetStream enabled, file-backed storage so events survive container restarts.
+    command:
+      - "--jetstream"
+      - "--store_dir=/data"
+      - "--http_port=8222"
+    ports:
+      - "4222:4222"    # client protocol
+      - "8222:8222"    # HTTP monitoring (http://localhost:8222/)
+    volumes:
+      - natsdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz | grep -q ok"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  # ===========================================================================
+  # Backend microservices (each builds from ./<service>/Dockerfile)
+  # ===========================================================================
+  auth:
+    <<: *service-defaults
+    build: ../auth-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: auth
+    ports:
+      - "8081:8080"
+
+  user:
+    <<: *service-defaults
+    build: ../user-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: user
+    ports:
+      - "8082:8080"
+
+  restaurant:
+    <<: *service-defaults
+    build: ../restaurant-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: restaurant
+    ports:
+      - "8083:8080"
+
+  menu:
+    <<: *service-defaults
+    build: ../menu-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: menu
+      RESTAURANT_SERVICE_URL: http://restaurant:8080
+    ports:
+      - "8084:8080"
+
+  order:
+    <<: *service-defaults
+    build: ../order-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: order
+      MENU_SERVICE_URL: http://menu:8080
+      RESTAURANT_SERVICE_URL: http://restaurant:8080
+    ports:
+      - "8085:8080"
+
+  payment:
+    <<: *service-defaults
+    build: ../payment-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: payment
+    ports:
+      - "8086:8080"
+
+  delivery:
+    <<: *service-defaults
+    build: ../delivery-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: delivery
+    ports:
+      - "8087:8080"
+
+  notification:
+    <<: *service-defaults
+    build: ../notification-service
+    environment:
+      <<: *service-env
+      SERVICE_NAME: notification
+    ports:
+      - "8088:8080"
+
+  # ===========================================================================
+  # Frontend (React, served by nginx on :80)
+  # ===========================================================================
+  frontend:
+    build: ../frontend
+    restart: unless-stopped
+    networks: [cloudkitchen]
+    environment:
+      VITE_API_BASE_URL: http://localhost:8081
+    ports:
+      - "3000:8080"
+    # Backends have no in-container healthcheck (distroless), so wait for them to
+    # have *started* — nginx resolves their names on the compose network.
+    depends_on:
+      - auth
+      - user
+      - restaurant
+      - menu
+      - order
+      - payment
+      - delivery
+      - notification
+
+networks:
+  cloudkitchen:
+    driver: bridge
+
+volumes:
+  pgdata:
+  redisdata:
+  natsdata:

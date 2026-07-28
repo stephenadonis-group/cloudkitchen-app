@@ -1,0 +1,92 @@
+CloudKitchen — Personal & Educational Use License
+==================================================
+
+Copyright (c) 2026 Vijay Giduthuri <vijaygiduthuri67@gmail.com>
+
+This Project — all source code, configuration files, Helm charts,
+Terraform modules, Kubernetes manifests, documentation, and diagrams
+(together, "the Project") — is made available for LEARNING by cloud
+engineers, DevOps engineers, platform engineers, and SREs, under the
+terms below.
+
+
+✅ PERMITTED — free of charge, no permission required
+─────────────────────────────────────────────────────
+
+  1. Clone, fork, download, and inspect the source.
+  2. Build and run the Project locally or in your own cloud account
+     for personal study and self-education.
+  3. Modify the code for your own non-commercial, non-published use.
+  4. Reference the Project's architecture or ideas in your own work
+     at your job, with attribution.
+  5. Share a link to the public source repository on social media or
+     in chat with friends and colleagues.
+
+
+❌ NOT PERMITTED — without prior written permission
+───────────────────────────────────────────────────
+
+  1. Producing, recording, editing, or publishing any video,
+     screencast, live-stream, audio recording, online course, or
+     paid tutorial that uses the Project — in whole or in part —
+     as its subject. This includes (non-exhaustive):
+
+         • YouTube / Vimeo / streaming-platform walkthroughs
+         • Paid courses (Udemy, Coursera, Pluralsight, etc.)
+         • Recorded conference talks released publicly
+         • "Coding-stream" / "follow-along" content
+         • Bootcamp or training-program curriculum
+
+  2. Publishing blog posts, books, paid newsletters, or tutorial
+     articles that copy more than a few short snippets of the
+     Project's code or documentation verbatim. (Brief, attributed
+     quotation for commentary or review is fine.)
+
+  3. Selling, sublicensing, re-hosting, or operating the Project as
+     a paid product or service.
+
+  4. Removing or altering the copyright, attribution, or license
+     notices in any file.
+
+
+📩 REQUESTING PERMISSION
+────────────────────────
+
+Educational creators (especially those with clear attribution and a
+genuine learning focus) are welcome to ask. Email:
+
+    vijaygiduthuri67@gmail.com
+
+Include:
+  • Who you are and your audience
+  • What you want to make
+  • Where you intend to publish it
+  • Whether the use is paid or free
+
+Reasonable requests get reasonable answers.
+
+
+⚠️ NO WARRANTY
+──────────────
+
+THE PROJECT IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE
+FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM, OUT OF, OR
+IN CONNECTION WITH THE PROJECT OR THE USE OR OTHER DEALINGS IN THE
+PROJECT.
+
+
+NOTE
+────
+
+This is a **source-available** license, NOT an OSI-approved open
+source license. The Project is free for personal learning, but
+content reuse (videos, courses, paid writing) and commercial reuse
+require written permission.
+
+——
+Vijay Giduthuri
+<vijaygiduthuri67@gmail.com>
+https://github.com/vijaygiduthuri/cloudkitchen-app

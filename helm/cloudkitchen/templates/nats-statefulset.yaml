@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.nats.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: nats
+spec:
+  serviceName: {{ .Values.nats.servicename }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+    spec:
+      containers:
+      - name: nats
+        image: {{ .Values.nats.image }}
+        # JetStream enabled, file-backed storage at /data so events survive restarts.
+        # No auth in dev — add `--user`/`--pass` or a config file for production.
+        # NOTE: `--max_file_store` is NOT a CLI flag (it's a config-file option);
+        # JetStream defaults to using all available PVC space, which is fine here.
+        args:
+          - "--jetstream"
+          - "--store_dir=/data"
+          - "--http_port=8222"           # HTTP monitoring endpoint
+        ports:
+        - name: client
+          containerPort: {{ .Values.nats.clientPort }}
+        - name: monitor
+          containerPort: {{ .Values.nats.monitorPort }}
+        - name: cluster
+          containerPort: 6222             # unused single-node, declared for future
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: monitor
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: monitor
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: {{ .Values.nats.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.nats.storage }}

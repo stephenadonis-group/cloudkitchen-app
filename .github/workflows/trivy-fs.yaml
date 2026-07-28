@@ -1,0 +1,78 @@
+# =============================================================================
+# Trivy filesystem + config scan (PR gate)
+# -----------------------------------------------------------------------------
+# Runs on every pull request. Scans the repository on disk for:
+#   - vulnerable dependencies (filesystem scan: go.mod, package.json, etc.)
+#   - misconfigurations (Dockerfiles, Kubernetes/Helm YAML, Terraform)
+# Results are uploaded to the GitHub "Security > Code scanning" tab (SARIF) and
+# the job FAILS on HIGH/CRITICAL findings so they are caught before merge.
+# This complements ci.yaml, which scans the built container IMAGES.
+# =============================================================================
+name: Trivy FS Scan
+
+on:
+  pull_request:
+    # Scan on any change — config/dependency issues can appear anywhere.
+    branches: [main]
+
+concurrency:
+  group: trivy-fs-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write # required to upload SARIF to code scanning
+
+jobs:
+  trivy-fs:
+    name: Trivy filesystem & config scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ---- Filesystem (dependency) scan — SARIF for the Security tab ----------
+      - name: Trivy filesystem scan (SARIF)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-fs.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Upload filesystem SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() # upload even if a later step fails
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-fs
+
+      # ---- Config/IaC scan (Dockerfiles, K8s/Helm, Terraform) -----------------
+      - name: Trivy config/misconfiguration scan (SARIF)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy-config.sarif
+          severity: HIGH,CRITICAL
+
+      - name: Upload config SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-config.sarif
+          category: trivy-config
+
+      # ---- Gate: re-run as table with exit-code so the PR FAILS on findings ---
+      - name: Trivy filesystem scan (gate)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: "1" # fail the PR on HIGH/CRITICAL
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true

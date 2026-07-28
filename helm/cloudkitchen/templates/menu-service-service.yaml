@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.menuService.servicename }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: menu-service
+    app.kubernetes.io/part-of: cloudkitchen
+spec:
+  type: ClusterIP
+  selector:
+    app: menu-service
+  ports:
+  - name: http
+    port: {{ .Values.menuService.port }}
+    targetPort: {{ .Values.menuService.port }}

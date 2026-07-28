@@ -1,0 +1,159 @@
+# PrometheusRule resources for CloudKitchen.
+#
+# Define recording + alerting rules that Prometheus (kube-prometheus-stack)
+# auto-discovers via the Prometheus Operator. The `release: kube-prometheus`
+# label MUST match the chart's fullnameOverride (set in
+# argocd/apps/app-monitoring.yaml) — otherwise the Operator won't load this
+# rule into the Prometheus CR's ruleSelector.
+#
+# Apply with:
+#   kubectl apply -f monitoring/prometheusrules.yaml
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cloudkitchen-app-rules
+  namespace: monitoring
+  labels:
+    # Must match the Prometheus CR's ruleSelector.matchLabels which the
+    # chart sets to {release: <Helm release name>}. Our ArgoCD App is
+    # named `monitoring`, so the chart's release name is `monitoring`.
+    # (Don't confuse with `fullnameOverride: kube-prometheus` — that
+    # changes resource NAMES but not the release-label selector.)
+    release: monitoring
+    app.kubernetes.io/part-of: cloudkitchen
+  annotations:
+    # Keep this resource alive even though no ArgoCD Application tracks it
+    # (we apply it manually via kubectl). See docs/gcp/06 Step 9.
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  groups:
+    # -------------------------------------------------------------------------
+    # HTTP-level signals — every service exposes http_requests_total +
+    # http_request_duration_seconds via the prometheus middleware.
+    # -------------------------------------------------------------------------
+    - name: cloudkitchen.http
+      interval: 30s
+      rules:
+        # Per-service request rate (requests per second, 5m window)
+        - record: cloudkitchen:http_requests:rate5m
+          expr: |
+            sum by (service) (
+              rate(http_requests_total{service=~".+-service"}[5m])
+            )
+
+        # Per-service 5xx error rate
+        - record: cloudkitchen:http_5xx:rate5m
+          expr: |
+            sum by (service) (
+              rate(http_requests_total{service=~".+-service",status=~"5.."}[5m])
+            )
+
+        # p95 request latency (seconds)
+        - record: cloudkitchen:http_latency_p95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (service, le) (
+                rate(http_request_duration_seconds_bucket{service=~".+-service"}[5m])
+              )
+            )
+
+        # Alert: a service is serving > 5% 5xx for 5 minutes
+        - alert: CloudKitchenHighErrorRate
+          expr: |
+            (
+              cloudkitchen:http_5xx:rate5m
+              /
+              clamp_min(cloudkitchen:http_requests:rate5m, 0.01)
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+            project: cloudkitchen
+          annotations:
+            summary: "High HTTP 5xx rate on {{ $labels.service }}"
+            description: "Service {{ $labels.service }} has >5% 5xx responses for 5 minutes ({{ $value | humanizePercentage }})."
+
+        # Alert: p95 latency > 1s for 10 minutes
+        - alert: CloudKitchenHighLatency
+          expr: cloudkitchen:http_latency_p95 > 1
+          for: 10m
+          labels:
+            severity: warning
+            project: cloudkitchen
+          annotations:
+            summary: "High p95 latency on {{ $labels.service }}"
+            description: "p95 latency on {{ $labels.service }} is {{ $value | humanize }}s for 10 minutes."
+
+    # -------------------------------------------------------------------------
+    # Kubernetes-level signals — pod health.
+    # -------------------------------------------------------------------------
+    - name: cloudkitchen.kubernetes
+      interval: 30s
+      rules:
+        # Alert: a pod has been not-ready for 5 minutes
+        - alert: CloudKitchenPodNotReady
+          expr: |
+            sum by (namespace, pod) (
+              kube_pod_status_ready{namespace="cloudkitchen", condition="false"}
+            ) > 0
+          for: 5m
+          labels:
+            severity: warning
+            project: cloudkitchen
+          annotations:
+            summary: "Pod {{ $labels.pod }} not ready"
+            description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been NotReady for 5 minutes."
+
+        # Alert: any container is in CrashLoopBackOff
+        - alert: CloudKitchenCrashLoopBackOff
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace="cloudkitchen"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: critical
+            project: cloudkitchen
+          annotations:
+            summary: "Container restarting in a loop"
+            description: "{{ $labels.namespace }}/{{ $labels.pod }} container {{ $labels.container }} restarted more than 3 times in 15 minutes."
+
+        # Alert: a Deployment has fewer ready replicas than desired for 10m
+        - alert: CloudKitchenDeploymentDegraded
+          expr: |
+            kube_deployment_status_replicas_available{namespace="cloudkitchen"}
+              < kube_deployment_spec_replicas{namespace="cloudkitchen"}
+          for: 10m
+          labels:
+            severity: warning
+            project: cloudkitchen
+          annotations:
+            summary: "Deployment {{ $labels.deployment }} degraded"
+            description: "{{ $labels.namespace }}/{{ $labels.deployment }} has only {{ $value }} ready replicas (less than spec)."
+
+    # -------------------------------------------------------------------------
+    # Data store signals — backing services.
+    # -------------------------------------------------------------------------
+    - name: cloudkitchen.data
+      interval: 30s
+      rules:
+        - alert: CloudKitchenPostgresDown
+          expr: |
+            kube_pod_status_ready{namespace="cloudkitchen", pod="postgres-0", condition="true"} != 1
+          for: 2m
+          labels:
+            severity: critical
+            project: cloudkitchen
+          annotations:
+            summary: "PostgreSQL pod is not Ready"
+            description: "postgres-0 in cloudkitchen namespace has not been Ready for 2 minutes."
+
+        - alert: CloudKitchenNATSDown
+          expr: |
+            kube_pod_status_ready{namespace="cloudkitchen", pod="nats-0", condition="true"} != 1
+          for: 2m
+          labels:
+            severity: critical
+            project: cloudkitchen
+          annotations:
+            summary: "NATS pod is not Ready"
+            description: "nats-0 in cloudkitchen namespace has not been Ready for 2 minutes."

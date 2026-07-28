@@ -1,0 +1,16 @@
+
+# --- secrets & credentials (NEVER commit) ---
+*-sa.json
+gcp-sa.json
+service-account*.json
+*credentials*.json
+.env
+.env.*
+*.pem
+
+# --- terraform local state + provider cache ---
+**/.terraform/
+**/.terraform.tfstate.lock.info
+**/terraform.tfstate
+**/terraform.tfstate.backup
+*.tfplan

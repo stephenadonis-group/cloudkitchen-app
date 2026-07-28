@@ -1,0 +1,17 @@
+CloudKitchen has been deployed to namespace: {{ .Values.namespace }}
+
+Workloads (9 app + 3 data stores):
+  auth-service, user-service, restaurant-service, menu-service,
+  order-service, payment-service, delivery-service, notification-service,
+  frontend  +  postgres (StatefulSet), redis, rabbitmq (StatefulSet)
+
+Check rollout:
+  kubectl get pods -n {{ .Values.namespace }}
+
+{{- if .Values.ingress.enabled }}
+App URL (once DNS + TLS resolve):
+  https://{{ .Values.ingress.domain }}
+{{- end }}
+
+Port-forward the frontend locally:
+  kubectl -n {{ .Values.namespace }} port-forward svc/{{ .Values.frontend.servicename }} 8080:80

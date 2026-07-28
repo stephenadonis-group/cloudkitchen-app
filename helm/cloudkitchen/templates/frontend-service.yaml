@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.frontend.servicename }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: frontend
+  ports:
+  - name: http
+    port: 80                         # ingress targets :80
+    targetPort: {{ .Values.frontend.port }}   # container listens on :8080

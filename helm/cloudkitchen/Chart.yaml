@@ -1,0 +1,16 @@
+apiVersion: v2
+name: cloudkitchen
+description: Umbrella Helm chart for the CloudKitchen platform. Deploys all 8 Go microservices + the React frontend, plus in-cluster PostgreSQL, Redis and RabbitMQ, a Traefik IngressRoute and a cert-manager Certificate. Every resource is an explicit, per-service template under templates/.
+type: application
+version: 0.2.0
+appVersion: "1.0.0"
+keywords:
+  - cloudkitchen
+  - microservices
+  - food-delivery
+maintainers:
+  - name: CloudKitchen Platform Team
+    email: platform@cloudkitchen.example.com
+# NOTE: PostgreSQL / Redis / RabbitMQ are intentionally NOT Bitnami subchart
+# dependencies anymore — they are written as explicit manifests under templates/
+# so that everything the chart deploys is visible in one place.

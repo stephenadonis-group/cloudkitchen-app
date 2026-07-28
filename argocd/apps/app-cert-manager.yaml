@@ -1,0 +1,52 @@
+# =============================================================================
+# Application: cert-manager
+# -----------------------------------------------------------------------------
+# Installs cert-manager from the Jetstack Helm repo into the `ingress` namespace.
+# Issues/renews TLS certificates (e.g. Let's Encrypt) for cloudkitchen.example.com.
+# `installCRDs: true` lets cert-manager manage its own CRDs.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloudkitchen
+
+  source:
+    repoURL: https://charts.jetstack.io # official Jetstack/cert-manager repo
+    chart: cert-manager
+    targetRevision: v1.15.3 # pin chart version; bump deliberately
+    helm:
+      values: |
+        # Let the chart install its CRDs so ArgoCD does not need them pre-applied.
+        installCRDs: true
+        replicaCount: 2
+        # Optional: tell cert-manager which DNS resolvers to use for ACME checks.
+        extraArgs:
+          - --dns01-recursive-nameservers-only
+          - --dns01-recursive-nameservers=8.8.8.8:53,1.1.1.1:53
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        # NOTE: After cert-manager is up, apply a ClusterIssuer (ACME/Let's Encrypt)
+        #       for cloudkitchen.example.com. Keep that manifest in the app repo.
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ingress
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # CRDs can exceed the 256KB annotation limit; ServerSideApply avoids it.
+      - ServerSideApply=true

@@ -1,0 +1,87 @@
+# promtail-values.yaml
+# -----------------------------------------------------------------------------
+# Helm values for Promtail (grafana/promtail chart). Runs as a DaemonSet,
+# tails container logs, scrapes ONLY the `cloudkitchen` namespace, and parses
+# the structured JSON the Go services emit to stdout.
+#
+#   helm repo add grafana https://grafana.github.io/helm-charts
+#   helm upgrade --install promtail grafana/promtail \
+#     -n logging --create-namespace -f logging/promtail-values.yaml
+#
+# Expected log line shape (stdout JSON):
+#   {"time":"2026-05-27T10:00:00Z","level":"info","msg":"request handled",
+#    "service":"order","trace_id":"abc123","method":"POST","path":"/orders",
+#    "status":201,"duration_ms":12}
+# -----------------------------------------------------------------------------
+
+config:
+  clients:
+    - url: http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push
+
+  snippets:
+    # Replace the default scrape configs with a single cloudkitchen-only job.
+    scrapeConfigs: |
+      - job_name: cloudkitchen-pods
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - cloudkitchen
+        pipeline_stages:
+          # 1. Parse the JSON envelope written by the Go services.
+          - cri: {}
+          - json:
+              expressions:
+                level:    level
+                service:  service
+                msg:      msg
+                ts:       time
+                trace_id: trace_id
+                status:   status
+                method:   method
+                path:     path
+          # 2. Promote useful fields to labels (keep cardinality low).
+          - labels:
+              level:
+              service:
+          # 3. Use the application timestamp when present.
+          - timestamp:
+              source: ts
+              format: RFC3339Nano
+              fallback_formats:
+                - RFC3339
+          # 4. Keep the message readable in Grafana Explore.
+          - output:
+              source: msg
+        relabel_configs:
+          # Only keep running pods in the cloudkitchen namespace.
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: cloudkitchen
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_pod_container_name]
+            target_label: container
+          # Build the path to the container log files.
+          - source_labels:
+              [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+            target_label: __path__
+            separator: /
+            replacement: /var/log/pods/*$1/*.log
+
+# DaemonSet tolerations so logs are collected from all nodes (incl. control-plane
+# in small clusters / kind).
+tolerations:
+  - effect: NoSchedule
+    operator: Exists
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 192Mi

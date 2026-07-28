@@ -1,0 +1,136 @@
+# network-policies.yaml
+# -----------------------------------------------------------------------------
+# Zero-trust networking for the `cloudkitchen` namespace.
+#
+#   1. default-deny-all      : deny all ingress + egress by default
+#   2. allow-dns             : allow DNS egress to kube-dns (needed by everything)
+#   3. allow-from-traefik    : allow ingress from the Traefik controller -> :8080
+#   4. allow-intra-namespace : allow service-to-service traffic within the ns
+#   5. allow-egress-backing  : allow egress to postgres / redis / rabbitmq
+#
+# Requires a CNI that enforces NetworkPolicy (Calico, Cilium, AWS VPC CNI w/
+# policy enforcement, etc.).
+#
+# NOTE: backing services (PostgreSQL/Redis/RabbitMQ) are assumed to run in the
+# `cloudkitchen` namespace and carry an `app` label. If they live elsewhere
+# (e.g. RDS/ElastiCache/Amazon MQ), the egress rules below should target CIDRs
+# instead of pod selectors.
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: cloudkitchen
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+  namespace: cloudkitchen
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-from-traefik
+  namespace: cloudkitchen
+spec:
+  # Applies to the application services (everything that serves HTTP on 8080).
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: cloudkitchen
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-intra-namespace
+  namespace: cloudkitchen
+spec:
+  # Allow sync REST calls between services inside the namespace.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: cloudkitchen
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: cloudkitchen
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/part-of: cloudkitchen
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-backing-services
+  namespace: cloudkitchen
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/part-of: cloudkitchen
+  policyTypes:
+    - Egress
+  egress:
+    # PostgreSQL
+    - to:
+        - podSelector:
+            matchLabels:
+              app: postgres
+      ports:
+        - protocol: TCP
+          port: 5432
+    # Redis
+    - to:
+        - podSelector:
+            matchLabels:
+              app: redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    # RabbitMQ
+    - to:
+        - podSelector:
+            matchLabels:
+              app: rabbitmq
+      ports:
+        - protocol: TCP
+          port: 5672

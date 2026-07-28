@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.userService.servicename }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: user-service
+    app.kubernetes.io/part-of: cloudkitchen
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+  - name: http
+    port: {{ .Values.userService.port }}
+    targetPort: {{ .Values.userService.port }}

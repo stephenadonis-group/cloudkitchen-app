@@ -1,0 +1,55 @@
+# =============================================================================
+# Application: cloudkitchen (the platform's own microservices)
+# -----------------------------------------------------------------------------
+# Deploys the umbrella Helm chart at helm/cloudkitchen using the chart's own
+# values.yaml. CI patches the per-service image strings directly inside
+# helm/cloudkitchen/values.yaml; ArgoCD detects the git change and rolls out
+# the new images.
+# =============================================================================
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudkitchen
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: cloudkitchen
+
+  source:
+    # NOTE: Replace with your real Git repository URL.
+    repoURL: https://github.com/vijaygiduthuri/cloudkitchen-app.git # <-- REPLACE
+    targetRevision: main
+    path: helm/cloudkitchen
+    # No valueFiles: ArgoCD renders the chart with its own helm/cloudkitchen/values.yaml.
+    # CI keeps the image strings in that file up to date.
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudkitchen
+
+  # StatefulSet.spec.volumeClaimTemplates is immutable after creation.
+  # When ArgoCD adopts a pre-existing StatefulSet (e.g. after `helm uninstall`
+  # left the PVCs behind and we re-applied via ArgoCD), Kubernetes silently
+  # refuses to update that field — leaving a permanent OutOfSync diff.
+  # Ignoring it tells ArgoCD "this is intentionally not reconciled".
+  ignoreDifferences:
+    - group: apps
+      kind: StatefulSet
+      jsonPointers:
+        - /spec/volumeClaimTemplates
+
+  syncPolicy:
+    automated:
+      prune: true # remove resources deleted from git
+      selfHeal: true # auto-correct out-of-band drift
+    syncOptions:
+      - CreateNamespace=true # create the cloudkitchen namespace if absent
+      - ServerSideApply=true # safer apply for large CRD-bearing manifests + plays nicer with our StatefulSets
+      - RespectIgnoreDifferences=true # honor the ignoreDifferences block above
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

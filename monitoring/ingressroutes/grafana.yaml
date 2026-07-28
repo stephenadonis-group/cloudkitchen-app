@@ -1,0 +1,23 @@
+# =============================================================================
+# Traefik IngressRoute exposing grafana at  http://<host>/grafana/
+# Backend: monitoring-grafana:80
+#
+# Apply with:
+#   kubectl apply -f monitoring/ingressroutes/grafana.yaml
+# =============================================================================
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: grafana
+  namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+spec:
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/grafana`)
+      kind: Rule
+      services:
+        - name: monitoring-grafana
+          port: 80
