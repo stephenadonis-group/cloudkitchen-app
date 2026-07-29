@@ -28,6 +28,7 @@
 name: CI (GCP / Artifact Registry)
 
 on:
+ workflow_dispatch: {}
   push:
     branches: [main]
     # Run on any service-code OR helm-chart change. Yes, a helm-only edit
