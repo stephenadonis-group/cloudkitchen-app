@@ -8,6 +8,7 @@
 # =============================================================================
 
 
+
 # Namespace every resource is created in.
 namespace: cloudkitchen
 # Container registry that holds the service images (GCP Artifact Registry for GKE).
