@@ -15,7 +15,6 @@
 name: CI (AWS / ECR)
 
 on:
-  workflow_dispatch: {}
   push:
     branches: [main]
     paths:
