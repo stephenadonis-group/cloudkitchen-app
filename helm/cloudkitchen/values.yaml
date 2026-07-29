@@ -7,8 +7,6 @@
 # strings) — there are no separate per-environment override files.
 # =============================================================================
 
-
-
 # Namespace every resource is created in.
 namespace: cloudkitchen
 # Container registry that holds the service images (GCP Artifact Registry for GKE).
