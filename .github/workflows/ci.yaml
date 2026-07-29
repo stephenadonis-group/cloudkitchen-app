@@ -28,6 +28,7 @@ on:
       - "delivery-service/**"
       - "notification-service/**"
       - "frontend/**"
+      - "helm/cloudkitchen/**"
       - ".github/workflows/ci.yaml"
   pull_request:
     paths:
@@ -40,6 +41,7 @@ on:
       - "delivery-service/**"
       - "notification-service/**"
       - "frontend/**"
+      - "helm/cloudkitchen/**"
       - ".github/workflows/ci.yaml"
 
 # Cancel superseded runs on the same ref to save CI minutes.
