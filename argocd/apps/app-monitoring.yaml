@@ -6,9 +6,9 @@
 #
 # All three UIs (Grafana, Prometheus, Alertmanager) are exposed under
 # sub-paths on the existing Traefik LB (NOT separate hosts or LBs):
-#   http://vijaygiduthuri.in/grafana/
-#   http://vijaygiduthuri.in/prometheus/
-#   http://vijaygiduthuri.in/alertmanager/
+#   http://steveops.site/grafana/
+#   http://steveops.site/prometheus/
+#   http://steveops.site/alertmanager/
 #
 # The Traefik IngressRoute objects themselves live in
 # helm/cloudkitchen/templates/observability-ingressroute.yaml — this file
@@ -68,8 +68,8 @@ spec:
           # redirects, and login URLs all break.
           grafana.ini:
             server:
-              domain: vijaygiduthuri.in
-              root_url: "http://vijaygiduthuri.in/grafana/"
+              domain: steveops.site
+              root_url: "http://steveops.site/grafana/"
               serve_from_sub_path: true
           # Auto-add Loki as a datasource so log panels work out of the box.
           # (The default Prometheus datasource is added by the chart already.)
@@ -104,7 +104,7 @@ spec:
           prometheusSpec:
             retention: 15d
             routePrefix: /prometheus
-            externalUrl: http://vijaygiduthuri.in/prometheus
+            externalUrl: http://steveops.site/prometheus
             # Discover ServiceMonitors / PodMonitors across all namespaces
             # (so anything we drop in cloudkitchen ns gets scraped).
             serviceMonitorSelectorNilUsesHelmValues: false
@@ -131,7 +131,7 @@ spec:
           enabled: true
           alertmanagerSpec:
             routePrefix: /alertmanager
-            externalUrl: http://vijaygiduthuri.in/alertmanager
+            externalUrl: http://steveops.site/alertmanager
             resources:
               requests:
                 cpu: 25m
