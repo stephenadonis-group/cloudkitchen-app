@@ -20,8 +20,8 @@ single_nat_gateway   = true # one NAT instead of three saves ~$60/month
 # --- EKS ---
 kubernetes_version  = "1.30"
 node_instance_types = ["t3.medium"]
-node_desired_size   = 2
-node_min_size       = 2
+node_desired_size   = 3
+node_min_size       = 3
 node_max_size       = 3
 
 # --- security: tighten these to your IP/office CIDR for real deployments ---
