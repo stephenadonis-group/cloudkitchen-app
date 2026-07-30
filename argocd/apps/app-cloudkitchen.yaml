@@ -18,7 +18,7 @@ spec:
 
   source:
     # NOTE: Replace with your real Git repository URL.
-    repoURL: https://github.com/vijaygiduthuri/cloudkitchen-app.git # <-- REPLACE
+    repoURL: https://github.com/stephenadonis-group/cloudkitchen-app.git # <-- REPLACE
     targetRevision: main
     path: helm/cloudkitchen
     # No valueFiles: ArgoCD renders the chart with its own helm/cloudkitchen/values.yaml.
