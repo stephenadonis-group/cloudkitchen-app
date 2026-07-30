@@ -119,6 +119,7 @@ spec:
             storageSpec:
               volumeClaimTemplate:
                 spec:
+                  storageClassName: gp2
                   accessModes: ["ReadWriteOnce"]
                   resources:
                     requests:
