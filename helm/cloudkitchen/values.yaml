@@ -9,8 +9,8 @@
 
 # Namespace every resource is created in.
 namespace: cloudkitchen
-# Container registry that holds the service images (GCP Artifact Registry for GKE).
-imageRegistry: us-central1-docker.pkg.dev/project-d31a3358-346c-40e8-bda/cloudkitchen-registry
+# Container registry that holds the service images (ECR Registry for EKS).
+imageRegistry: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev
 # -----------------------------------------------------------------------------
 # Backend microservices (all listen on :8080, expose /healthz and /readyz)
 # -----------------------------------------------------------------------------
@@ -115,7 +115,7 @@ postgres:
   image: postgres:16-alpine
   port: 5432
   storage: 10Gi
-  storageClass: standard-rwo # GKE StorageClass (provided by GCE PD CSI driver)
+  storageClass: gp2
 redis:
   name: redis
   servicename: redis
@@ -128,7 +128,7 @@ nats:
   clientPort: 4222 # NATS client protocol
   monitorPort: 8222 # HTTP monitoring endpoint
   storage: 5Gi # JetStream file storage
-  storageClass: standard-rwo
+  storageClass: gp2
 # -----------------------------------------------------------------------------
 # Shared database connection (single DB "cloudkitchen", schema-per-service)
 # -----------------------------------------------------------------------------
@@ -147,7 +147,7 @@ ingress:
   #   tls: true  + entryPoint: websecure  -> HTTPS via cert-manager (Phase 7).
   tls: false
   # Production hostname (the DNS name your users / domain point at).
-  host: vijaygiduthuri.in
+  host: steveops.site
   # Traefik LoadBalancer IP — kept as a second host so curl-by-IP still
   # works for debugging even after DNS is in place. Get it with:
   #   kubectl -n traefik get svc traefik \
