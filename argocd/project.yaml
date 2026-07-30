@@ -22,7 +22,7 @@ spec:
   # NOTE: Replace the placeholder repoURL with your real Git repository URL.
   # ---------------------------------------------------------------------------
   sourceRepos:
-    - https://github.com/vijaygiduthuri/cloudkitchen-app.git # <-- REPLACE with real repo URL
+    - https://github.com/stephenadonis-group/cloudkitchen-app.git  # <-- REPLACE with real repo URL
     # Helm chart registries used by the platform add-on Applications:
     - https://helm.traefik.io/traefik
     - https://charts.jetstack.io
