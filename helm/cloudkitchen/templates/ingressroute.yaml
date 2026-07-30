@@ -16,63 +16,63 @@ spec:
     - {{ .Values.ingress.entryPoint }}
   routes:
     # --- menu sub-paths under /api/restaurants (higher priority) ---
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathRegexp(`^/api/restaurants/[^/]+/(menu|categories|items)`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathRegexp(`^/api/restaurants/[^/]+/(menu|categories|items)`)
       kind: Rule
       priority: 200
       services:
         - name: {{ .Values.menuService.servicename }}
           port: {{ .Values.menuService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/menu`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/menu`)
       kind: Rule
       priority: 200
       services:
         - name: {{ .Values.menuService.servicename }}
           port: {{ .Values.menuService.port }}
     # --- one rule per service ---
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/auth`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/auth`)
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.authService.servicename }}
           port: {{ .Values.authService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/users`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/users`)
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.userService.servicename }}
           port: {{ .Values.userService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/restaurants`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/restaurants`)
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.restaurantService.servicename }}
           port: {{ .Values.restaurantService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && (PathPrefix(`/api/cart`) || PathPrefix(`/api/orders`))
+    - match: (Host(`{{ .Values.ingress.host }}`) && (PathPrefix(`/api/cart`) || PathPrefix(`/api/orders`))
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.orderService.servicename }}
           port: {{ .Values.orderService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/payments`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/payments`)
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.paymentService.servicename }}
           port: {{ .Values.paymentService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/deliveries`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/deliveries`)
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.deliveryService.servicename }}
           port: {{ .Values.deliveryService.port }}
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/api/notifications`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/notifications`)
       kind: Rule
       priority: 100
       services:
         - name: {{ .Values.notificationService.servicename }}
           port: {{ .Values.notificationService.port }}
     # --- frontend catch-all (lowest priority) ---
-    - match: (Host(`{{ .Values.ingress.host }}`) || Host(`{{ .Values.ingress.lbIP }}`)) && PathPrefix(`/`)
+    - match: (Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/`)
       kind: Rule
       priority: 1
       services:
