@@ -5,7 +5,7 @@
 # <svc>-deployment.yaml / -service.yaml / -configmap.yaml / -secret.yaml / -hpa.yaml.
 # This is THE values file ArgoCD renders with and CI patches (per-service image
 # strings) — there are no separate per-environment override files.
-# =============================================================================
+#=============================================================================
 
 # Namespace every resource is created in.
 namespace: cloudkitchen
