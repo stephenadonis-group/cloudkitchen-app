@@ -251,7 +251,7 @@ Quick summary:
 |---|---|
 | ✅ **Free, no permission needed** | Clone, fork, run on your own laptop / cloud account for personal study. Modify for your own non-commercial use. Reference the architecture in your own work, with attribution. |
 | ❌ **Permission required** | Videos / screencasts / livestreams / paid online courses / tutorials that feature this project. Books or paid newsletters that copy the code or docs. Any commercial reuse (selling, re-hosting as a paid service). |
-| 📩 **Want to make educational content?** | Email **vijaygiduthuri67@gmail.com** with who you are, what you want to make, where you'll publish it, and whether it's paid or free. Educational creators with clear attribution are welcome. |
+| 📩 **Want to make educational content?** | Email **stephenadonis2020@gmail.com** with who you are, what you want to make, where you'll publish it, and whether it's paid or free. Educational creators with clear attribution are welcome. |
 
 This project was built as a learning artifact for **cloud / DevOps / platform / SRE engineers** and stays free for that purpose. The restriction is on people repackaging it as their own content — not on you learning from it.
 
