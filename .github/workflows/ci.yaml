@@ -1,6 +1,6 @@
 # =============================================================================
 # CloudKitchen CI/CD — build, scan, push, and GitOps-update
-# -----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Pipeline overview:
 #   build        : matrix over all 9 services → docker build, Trivy scan
 #                  (fail on HIGH/CRITICAL), push to ECR (tags: <sha>, latest).
