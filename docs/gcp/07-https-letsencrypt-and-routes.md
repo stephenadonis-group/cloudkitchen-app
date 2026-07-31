@@ -114,7 +114,7 @@ metadata:
 spec:
   description: CloudKitchen platform project (microservices + platform add-ons)
   sourceRepos:
-    - https://github.com/steveops.site/cloudkitchen-app.git
+    - https://github.com/stephenadonis-group/cloudkitchen-app.git
     - https://helm.traefik.io/traefik
     - https://charts.jetstack.io
     - https://prometheus-community.github.io/helm-charts
