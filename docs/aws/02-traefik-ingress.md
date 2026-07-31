@@ -1,7 +1,7 @@
-# Phase 2 — Traefik Ingress Controller (GCP)
+# Phase 2 — Traefik Ingress Controller (EKS)
 
-**Goal:** Install **Traefik** in the cluster, expose it through a **GCP TCP
-LoadBalancer** (single static IP), and verify the Traefik CRDs
+**Goal:** Install **Traefik** in the cluster, 
+
 (`IngressRoute`, `Middleware`, `TLSStore`) are installed. ArgoCD and the
 CloudKitchen app both deploy `IngressRoute` objects in later phases — they
 need Traefik already running.
@@ -42,9 +42,8 @@ ingress-nginx, GKE's built-in ingress controller), but Traefik gives us:
                      │
                      ▼
         ┌──────────────────────────┐
-        │  GCP TCP LoadBalancer    │   (provisioned by the `LoadBalancer` Service)
-        │  single static IP (Geo:  │
-        │   regional, us-central1) │
+        │  EKS TCP LoadBalancer    │   (provisioned by the `LoadBalancer` Service)
+        │                          │
         └────────────┬─────────────┘
                      ▼
               ┌──────────────┐
@@ -65,7 +64,7 @@ ingress-nginx, GKE's built-in ingress controller), but Traefik gives us:
 
 | Need                                      | How to check                                                                       |
 | ----------------------------------------- | ---------------------------------------------------------------------------------- |
-| Phase 1 done (GKE cluster up, kubeconfig) | `kubectl get nodes` shows 2 Ready                                                  |
+| Phase 1 done (EKS cluster up, kubeconfig) | `kubectl get nodes` shows 2 Ready                                                  |
 | `helm` v3                                 | `helm version`                                                                     |
 | Internet access to Helm Hub               | `helm repo add traefik https://traefik.github.io/charts && helm repo update` works |
 
@@ -103,7 +102,7 @@ What each flag does:
 
 | Flag                                          | Why                                                                                                                                  |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `service.type=LoadBalancer`                   | Tells Kubernetes to provision a real cloud LB. GKE auto-creates a GCP TCP LoadBalancer + an external IP.                             |
+| `service.type=LoadBalancer`                   | Tells Kubernetes to provision a real cloud LB. EKS auto-creates a EKS TCP Loadbalancer.                             |
 | `ingressClass.enabled=true` + `isDefaultClass=true` | Creates the `IngressClass` so Traefik can claim plain-`Ingress` objects too. Default class = unmarked Ingresses go to Traefik.    |
 | `ingressRoute.dashboard.enabled=true`         | Auto-creates an `IngressRoute` for the Traefik dashboard at `/dashboard/` + `/api`.                                                  |
 | `deployment.replicas=2`                       | Two Traefik Pods across nodes → if one node drains, ingress doesn't go down.                                                         |
@@ -184,11 +183,7 @@ learning cluster it's fine open.
 
 ---
 
-## Step 5 — Make sure the LB IP is stable (or live with rotation)
 
-The IP that GKE assigns to a `LoadBalancer` Service is **ephemeral** by
-default — if you ever delete and recreate the Traefik Service, GKE picks a
-new IP and your DNS goes stale.
 
 To **promote the current ephemeral IP to a static reservation** so DNS
 records survive:
@@ -200,24 +195,7 @@ LB_IP=$(kubectl -n traefik get svc traefik \
   -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
 echo "Current Traefik IP: ${LB_IP}"
 
-# 2. Reserve it as a static address. The `--addresses=${LB_IP}` flag is
-#    CRITICAL — it tells GCP "promote THIS specific IP to static". Without
-#    that flag, GCP creates a brand-new random IP from the pool and your
-#    existing LoadBalancer keeps using the old ephemeral one — see the
-#    "doesn't bind" trap below.
-gcloud compute addresses create traefik-lb-ip \
-  --addresses="${LB_IP}" \
-  --region=us-central1 \
-  --project=<your-project-id>
-
-# 3. Verify the address flipped to IN_USE
-gcloud compute addresses describe traefik-lb-ip \
-  --region=us-central1 \
-  --format='table(name,address,status)'
-# Expect:  traefik-lb-ip  <LB_IP>  IN_USE
-
-# 4. Pin the Traefik Service spec to it (so a Service recreate would
-#    re-claim the same IP instead of picking a new ephemeral one)
+#
 helm upgrade traefik traefik/traefik \
   --namespace traefik --reuse-values \
   --set service.loadBalancerIP="${LB_IP}"
@@ -258,12 +236,12 @@ route**:
 
 | Symptom                                                                       | Likely cause                                                                                                  | Fix                                                                                                                                                                                                |
 | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `kubectl -n traefik get svc traefik` shows `EXTERNAL-IP <pending>` for >5 min | GCP LB still provisioning, OR the cluster's network can't talk to the LB controller (private cluster + no NAT) | Check `kubectl -n traefik describe svc traefik` events. If "no firewall rule for health check" — your firewall module is missing the GCP health-check ranges (`130.211.0.0/22`, `35.191.0.0/16`).  |
+| `kubectl -n traefik get svc traefik` shows `EXTERNAL-IP <pending>` for >5 min | AWS LB still provisioning, OR the cluster's network can't talk to the LB controller (private cluster + no NAT) | Check `kubectl -n traefik describe svc traefik` events. If "no firewall rule for health check" — your firewall module is missing the GCP health-check ranges (`130.211.0.0/22`, `35.191.0.0/16`).  |
 | `curl http://<LB_IP>/` → `Connection refused`                                 | Pods aren't Ready (failing health checks) so the LB has no backends                                           | `kubectl -n traefik get pods` — Pods should be 1/1 Running. If not, `kubectl -n traefik describe pod <name>` and `kubectl -n traefik logs <name>` to see the start-up error.                       |
 | `curl http://<LB_IP>/dashboard/` → 404                                        | Dashboard `IngressRoute` wasn't installed (you set `ingressRoute.dashboard.enabled=false`)                    | `helm upgrade traefik traefik/traefik -n traefik --reuse-values --set ingressRoute.dashboard.enabled=true`                                                                                          |
 | Cluster IngressRoutes match but requests get 404 anyway                       | Your `IngressRoute` lives in a namespace Traefik can't see (older Traefik versions required `providers.kubernetesCRD.namespaces`) | Traefik 3.x defaults to watching all namespaces. Confirm with `kubectl -n traefik logs deploy/traefik | grep -i namespace`. If restricted, set `providers.kubernetesCRD.allowCrossNamespace=true`.   |
 | `helm install` fails with `cannot patch ... resource mapping not found`       | Traefik CRDs from an older install are still in the cluster (from a previous run / different namespace)       | `kubectl get crd | grep traefik.io` — delete the stale ones with `kubectl delete crd <name>`. **Warning:** this deletes IngressRoutes that depend on them — only do this on a clean cluster.        |
-| GCP says "quota: external IPs in use"                                         | You've hit the 8/region static IP quota                                                                       | Either request a quota increase, or use the auto-assigned ephemeral IP for now.                                                                                                                    |
+|                                                                                                                                                       |
 
 ---
 

@@ -353,3 +353,211 @@ bastion, NAT, and firewall rules. Bringing it back up later is just
 ---
 
 ➡️ **Next:** [Phase 2 — Traefik Ingress](02-traefik-ingress.md)
+
+
+
+# Phase 1 — Infrastructure & Jump VM (AWS / EKS)
+
+**Goal:** Provision the entire AWS infrastructure with **one `terraform apply`**,
+connect to the **bastion** (SSM or SSH), install the DevOps tools, and finally
+connect to the new **EKS cluster** so you can run `kubectl get nodes`.
+
+**Time:** ~25–35 minutes (EKS control plane is usually the slowest step).
+
+This is the **AWS counterpart** of [docs/gcp/01-infra-and-jump-vm.md](../gcp/01-infra-and-jump-vm.md).
+Same idea, different cloud:
+
+| Concern                | GKE                                      | EKS (this doc)                                              |
+| ---------------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| Compute                | GCE nodes (`e2-medium` / `e2-standard-4`)| EC2 nodes (`t3.medium` or similar)                          |
+| Bastion access         | IAP tunnel                               | **SSM Session Manager** and/or public SSH                   |
+| Image registry         | Artifact Registry (one repo)             | **ECR** (one repo per service under `cloudkitchen-dev/`)    |
+| Kubeconfig fetch       | `gcloud container clusters get-credentials` | `aws eks update-kubeconfig`                              |
+| Storage class for PVCs | `standard-rwo`                           | **`gp2` / `gp3`** (EBS CSI)                                 |
+| LB for ingress         | GCP TCP LB                               | **NLB** (via AWS LB Controller + Traefik Service)           |
+| Terraform directory    | `gcp-terraform/`                         | **`aws-terraform/`**                                        |
+| Control-plane cost     | First zonal cluster free tier            | ~$73/mo per cluster                                         |
+
+---
+
+## What you'll build in this phase
+
+AWS account  (us-east-1)
+┌──────────────────────────────────────────────────────────────┐
+│                            VPC                                │
+│                                                                │
+│   Public subnets  ── NAT GW / IGW ──► internet                 │
+│   Private subnets ── EKS nodes (no public IPs)                 │
+│                                                                │
+│   Bastion  ◀── you (SSM Session Manager or SSH)                │
+│      │                                                         │
+│      ▼                                                         │
+│   EKS cluster (cloudkitchen-dev)                               │
+│   └── managed node group                                       │
+│      └── kubectl  ←── from laptop or bastion                   │
+│                                                                │
+│   ECR — cloudkitchen-dev/{auth,user,restaurant,...}            │
+│   IRSA roles — ALB controller, external-dns, cert-manager, EBS │
+└────────────────────────────────────────────────────────────────┘
+
+
+---
+
+## ✅ Prerequisites
+
+| Tool / thing                         | How to check                          | Where to get it                                      |
+| ------------------------------------ | ------------------------------------- | ---------------------------------------------------- |
+| AWS account                          | `aws sts get-caller-identity`         | https://aws.amazon.com                               |
+| AWS CLI v2 configured                | `aws configure list`                  | https://docs.aws.amazon.com/cli                      |
+| **Terraform ≥ 1.5**                  | `terraform -version`                  | https://developer.hashicorp.com/terraform/install    |
+| `kubectl`                            | `kubectl version --client`            | https://kubernetes.io/docs/tasks/tools/              |
+| `helm` v3                            | `helm version`                        | https://helm.sh/docs/intro/install/                  |
+| `session-manager-plugin` (for SSM)   | `session-manager-plugin`              | AWS Session Manager plugin docs                      |
+| CloudKitchen repo cloned             | `ls aws-terraform/`                   | your fork of the repo                                |
+
+```bash
+export AWS_REGION=us-east-1
+# or: aws configure set region us-east-1
+
+aws-terraform/
+├── main.tf                  # wires VPC, EKS, ECR, IRSA, bastion, …
+├── variables.tf
+├── outputs.tf               # cluster name, ECR URLs, bastion IP, kubeconfig cmd
+├── provider.tf
+├── terraform.tfvars         # the file you edit (region, node size, …)
+└── modules/
+    ├── vpc/
+    ├── eks/
+    ├── ecr/
+    ├── irsa/                # ALB controller, external-dns, cert-manager, EBS CSI
+    └── bastion/
+
+Step 1 — Edit terraform.tfvars
+Open aws-terraform/terraform.tfvars and set at least:
+
+Knob,Example,Notes
+region,us-east-1,Must match where you want the cluster
+cluster_name,cloudkitchen-dev,Used by kubeconfig + tags
+node_instance_type,t3.medium or larger,Bump if running full app + monitoring
+node_desired_size / min / max,2 / 2 / 3,Autoscaling bounds
+
+Step 2 — Initialize and apply
+
+cd aws-terraform
+`````
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+`````
+
+`````
+Useful outputs after apply
+Bash
+terraform output
+`````
+
+bastion_public_ip   = "x.x.x.x"
+cluster_name        = "cloudkitchen-dev"
+cluster_endpoint    = "https://....eks.amazonaws.com"
+ecr_repository_urls = {
+  "auth" = "<account>.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/auth"
+  
+}
+
+kubeconfig_command  = "aws eks update-kubeconfig --region us-east-1 --name cloudkitchen-dev"
+irsa_role_arns      = {
+  "aws_load_balancer_controller" = "arn:aws:iam::...:role/..."
+  "external_dns"                 = "arn:aws:iam::...:role/..."
+  "cert_manager"                 = "arn:aws:iam::...:role/..."
+  "ebs_csi_driver"               = "arn:aws:iam::...:role/..."
+}
+
+Step 3 — Connect to the bastion
+Option A — SSM (preferred):
+Bashaws ssm start-session --target <bastion-instance-id> --region us-east-1
+Option B — SSH:
+Bashssh -i ~/.ssh/<your-key>.pem ec2-user@<bastion_public_ip>
+
+Step 4 — Install DevOps tools (laptop or bastion)
+
+
+# kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+
+# helm
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+kubectl version --client
+helm version
+aws --version
+
+Step 5 — Get a kubeconfig
+
+aws eks update-kubeconfig --region us-east-1 --name cloudkitchen-dev
+
+# or:
+# eval "$(terraform output -raw kubeconfig_command)"
+
+kubectl config current-context
+kubectl get nodes
+
+Step 6 — Smoke-test ECR
+
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+REGION=us-east-1
+
+aws ecr get-login-password --region $REGION \
+  | docker login --username AWS --password-stdin $$   {ACCOUNT_ID}.dkr.ecr.   $${REGION}.amazonaws.com
+
+docker pull busybox:1.36
+docker tag busybox:1.36 \
+  $$   {ACCOUNT_ID}.dkr.ecr.   $${REGION}.amazonaws.com/cloudkitchen-dev/auth:smoke
+docker push \
+  $$   {ACCOUNT_ID}.dkr.ecr.   $${REGION}.amazonaws.com/cloudkitchen-dev/auth:smoke
+
+
+Step 7 — StorageClass (important for later phases)
+Bash
+
+kubectl get storageclass
+
+Make gp2 default if needed: or gp3
+
+kubectl patch storageclass gp2 \
+  -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+
+Use storageClassName: gp2 for Postgres, NATS, Loki, Prometheus PVCs.
+Do not use GKE’s standard-rwo on EKS.
+
+Step 8 — What Terraform prepared for later phases
+
+Component,Purpose,Next use
+AWS Load Balancer Controller IRSA,Creates NLB/ALB,Traefik Service type=LoadBalancer
+external-dns IRSA,Auto Route53 records,Annotate Services / Ingresses
+cert-manager IRSA,TLS / Let's Encrypt,Phase 7
+EBS CSI IRSA,Dynamic volumes,All PVCs
+ECR repos,Per-service images,CI push + GitOps tags
+
+Step 9 — Destroy when done
+Bash
+cd aws-terraform
+terraform destroy
+
+Symptom,Likely cause,Fix
+Unable to connect to the server,Wrong region/name or SG,aws eks describe-cluster --name cloudkitchen-dev
+Nodes NotReady,CNI / IAM / subnet tags,kubectl describe node; check aws-node logs
+PVC Pending,Empty or wrong StorageClass,Use gp2; set default StorageClass
+ECR push denied,Auth / wrong registry,Re-run docker login with ECR password
+Traefik EXTERNAL-IP pending,LB controller / IRSA / subnets,Check aws-load-balancer-controller logs
+
+Mapping to the rest of the AWS path
+Phase,What you do
+1,Infra + kubectl (this doc)
+2,Traefik + NLB
+3,CI → ECR + GitOps bump of values.yaml
+4,ArgoCD Application sync
+5,Route 53 Alias → Traefik NLB
+6+,"Monitoring, logging (gp2), TLS"
+
+Mapping to the rest of the AWS path
