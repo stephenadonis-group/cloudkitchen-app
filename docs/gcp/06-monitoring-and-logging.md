@@ -379,7 +379,7 @@ kubectl -n monitoring get ingressroute
 ```bash
 curl -sIL -o /dev/null -w "/grafana/      -> HTTP %{http_code}\n" "http://steveops.site/grafana/"
 curl -sIL -o /dev/null -w "/prometheus/   -> HTTP %{http_code}\n" "http://steveops.site/prometheus/"
-curl -sL "http://vijaygiduthuri.in/alertmanager/-/ready"   # prints "OK"
+curl -sL "http://steveops.site/alertmanager/-/ready"   # prints "OK"
 ```
 
 Open in browser:
@@ -469,14 +469,14 @@ kubectl -n cloudkitchen get servicemonitor
 ### Verify scrape
 
 ```bash
-curl -s "http://vijaygiduthuri.in/prometheus/api/v1/query?query=up%7Bnamespace%3D%22cloudkitchen%22%7D" \
+curl -s "http://steveops.site/prometheus/api/v1/query?query=up%7Bnamespace%3D%22cloudkitchen%22%7D" \
   | python3 -m json.tool | head -40
 ```
 
 Each of the 8 services should show `up = 1`. Confirm with a real query:
 
 ```bash
-curl -s "http://vijaygiduthuri.in/prometheus/api/v1/query?query=sum%20by(service)%20(http_requests_total%7Bnamespace%3D%22cloudkitchen%22%7D)" \
+curl -s "http://steveops.site/prometheus/api/v1/query?query=sum%20by(service)%20(http_requests_total%7Bnamespace%3D%22cloudkitchen%22%7D)" \
   | python3 -m json.tool
 ```
 
@@ -487,7 +487,7 @@ Each service should report ~hundreds–thousands of `http_requests_total`
 
 ## Step 7 — Smoke test in Grafana
 
-1. Open **http://vijaygiduthuri.in/grafana/** and log in.
+1. Open **http://steveops.site/grafana/** and log in.
 2. Top-left menu → **Connections → Data sources**:
    - **Prometheus** should be there (added by the chart automatically).
    - **Loki** should be there too (we added it via `additionalDataSources`
@@ -585,7 +585,7 @@ GRAFANA_PWD=$(kubectl -n monitoring get secret monitoring-grafana \
   -o jsonpath='{.data.admin-password}' | base64 -d)
 
 curl -s -u "admin:${GRAFANA_PWD}" \
-  "http://vijaygiduthuri.in/grafana/api/search?type=dash-db&query=CloudKitchen" \
+  "http://steveops.site/grafana/api/search?type=dash-db&query=CloudKitchen" \
   | python3 -m json.tool
 ```
 
@@ -603,7 +603,7 @@ Each dashboard has a stable UID (`ck-<service>`):
 | menu-service         | http://steveops.site/grafana/d/ck-menu-service/cloudkitchen-menu-service         |
 | order-service        | http://steveops.site/grafana/d/ck-order-service/cloudkitchen-order-service       |
 | payment-service      | http://steveops.site/grafana/d/ck-payment-service/cloudkitchen-payment-service   |
-| delivery-service     | http://vijaygiduthuri.in/grafana/d/ck-delivery-service/cloudkitchen-delivery-service |
+| delivery-service     | http://steveops.site/grafana/d/ck-delivery-service/cloudkitchen-delivery-service |
 | notification-service | http://steveops.site/grafana/d/ck-notification-service/cloudkitchen-notification-service |
 
 ### 8e — How to customize (or add a new service)
