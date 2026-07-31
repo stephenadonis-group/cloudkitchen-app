@@ -17,7 +17,7 @@ imageRegistry: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev
 authService:
   deploymentname: auth-service-deployment
   servicename: auth-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/auth:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/auth:c115bbd
   replicas: 1
   port: 8080
   schema: auth # PostgreSQL schema this service owns
@@ -27,7 +27,7 @@ authService:
 userService:
   deploymentname: user-service-deployment
   servicename: user-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/user:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/user:c115bbd
   replicas: 1
   port: 8080
   schema: users
@@ -37,7 +37,7 @@ userService:
 restaurantService:
   deploymentname: restaurant-service-deployment
   servicename: restaurant-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/restaurant:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/restaurant:c115bbd
   replicas: 1
   port: 8080
   schema: restaurants
@@ -47,7 +47,7 @@ restaurantService:
 menuService:
   deploymentname: menu-service-deployment
   servicename: menu-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/menu:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/menu:c115bbd
   replicas: 1
   port: 8080
   schema: menu
@@ -57,7 +57,7 @@ menuService:
 orderService:
   deploymentname: order-service-deployment
   servicename: order-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/order:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/order:c115bbd
   replicas: 1
   port: 8080
   schema: orders
@@ -67,7 +67,7 @@ orderService:
 paymentService:
   deploymentname: payment-service-deployment
   servicename: payment-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/payment:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/payment:c115bbd
   replicas: 1
   port: 8080
   schema: payments
@@ -77,7 +77,7 @@ paymentService:
 deliveryService:
   deploymentname: delivery-service-deployment
   servicename: delivery-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/delivery:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/delivery:c115bbd
   replicas: 1
   port: 8080
   schema: delivery
@@ -87,7 +87,7 @@ deliveryService:
 notificationService:
   deploymentname: notification-service-deployment
   servicename: notification-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/notification:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/notification:c115bbd
   replicas: 1
   port: 8080
   schema: notifications
@@ -100,7 +100,7 @@ notificationService:
 frontend:
   deploymentname: frontend-deployment
   servicename: frontend-service
-  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/frontend:ba22df6
+  image: 896618135199.dkr.ecr.us-east-1.amazonaws.com/cloudkitchen-dev/frontend:c115bbd
   replicas: 1
   port: 8080
   hpa: frontend-autoscaler
