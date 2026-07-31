@@ -1,4 +1,4 @@
-# Phase 7 — HTTPS with Let's Encrypt + Path-Routed Sub-Apps (GCP)
+# Phase 7 — HTTPS with Let's Encrypt + Path-Routed Sub-Apps (EKS)
 
 **Goal:** Install **cert-manager**, mint a free **Let's Encrypt** certificate
 for your domain, flip the chart to **HTTPS** (`websecure` entryPoint), and
@@ -6,17 +6,15 @@ move ArgoCD + Grafana + Prometheus + Alertmanager over to HTTPS too — so
 you finish with:
 
 ```
-https://vijaygiduthuri.in                — the app UI
-https://vijaygiduthuri.in/argocd         — ArgoCD UI
-https://vijaygiduthuri.in/grafana        — Grafana
-https://vijaygiduthuri.in/prometheus     — Prometheus
-https://vijaygiduthuri.in/alertmanager   — Alertmanager
+https://steveops.site                — the app UI
+https://steveops.site/argocd         — ArgoCD UI
+https://steveops.site/grafana        — Grafana
+https://steveops.site/prometheus     — Prometheus
+https://steveops.site/alertmanager   — Alertmanager
 ```
 
 **Time:** ~15 minutes (most of it Let's Encrypt issuing the cert).
 
-This is the **GCP counterpart** of [docs/eks/07-https-letsencrypt-and-routes.md](../eks/07-https-letsencrypt-and-routes.md).
-Same architecture; only the install paths + service names differ.
 
 ---
 
@@ -70,7 +68,7 @@ So in this phase we **apply the Certificate manifest by hand** from
 
 | Check | How |
 |---|---|
-| Phase 5 done (your domain resolves to the LB IP) | `dig +short vijaygiduthuri.in` → returns your LB IP (e.g. `136.112.45.103`) |
+| Phase 5 done (your domain resolves to the LB IP) | `dig +short steveops.site` → returns your LB IP (e.g. `136.112.45.103`) |
 | Phase 6 done (monitoring + logging) | `kubectl -n monitoring get pods` healthy |
 | Port 80 reachable from the internet | Used by Let's Encrypt for HTTP-01 challenge. Traefik listens on 80 by default. |
 | `kubectl` + `helm` work | `kubectl get nodes` and `helm version` succeed |
@@ -116,7 +114,7 @@ metadata:
 spec:
   description: CloudKitchen platform project (microservices + platform add-ons)
   sourceRepos:
-    - https://github.com/vijaygiduthuri/cloudkitchen-app.git
+    - https://github.com/steveops.site/cloudkitchen-app.git
     - https://helm.traefik.io/traefik
     - https://charts.jetstack.io
     - https://prometheus-community.github.io/helm-charts
@@ -259,7 +257,7 @@ kubectl -n cert-manager get pods
 One ClusterIssuer, one apply. Uses Let's Encrypt's production API + the
 HTTP-01 challenge via Traefik.
 
-> 📧 Email is hard-coded to `vijaygiduthuri@gmail.com`. Let's Encrypt only
+> 📧 Email is hard-coded to `stephenadonis2020@gmail.com`. Let's Encrypt only
 > uses it to warn you before a cert expires — change in the heredoc below
 > if you want notices going to a different inbox.
 
@@ -274,7 +272,7 @@ metadata:
 spec:
   acme:
     server: https://acme-v02.api.letsencrypt.org/directory
-    email: vijaygiduthuri@gmail.com         # 👈 used for expiry notices
+    email: stephenadonis2020@gmail.com         # 👈 used for expiry notices
     privateKeySecretRef:
       name: letsencrypt-prod-account-key
     solvers:
@@ -306,7 +304,7 @@ kubectl describe clusterissuer letsencrypt-prod | tail -10
 ## Step 3 — Create the Certificate
 
 One Certificate manifest, one apply, one wait. The domain is hard-coded
-to `vijaygiduthuri.in`.
+to `steveops.site`.
 
 ### Apply
 
@@ -329,9 +327,9 @@ spec:
     name: letsencrypt-prod               # the ClusterIssuer from Step 2
     kind: ClusterIssuer
     group: cert-manager.io
-  commonName: vijaygiduthuri.in
+  commonName: steveops.site
   dnsNames:
-    - vijaygiduthuri.in
+    - steveops.site
 EOF
 kubectl apply -f /tmp/certificate.yaml
 ```
@@ -366,7 +364,7 @@ kubectl -n cloudkitchen describe challenge <name> | tail -30
 # Most common cause: port 80 not reachable from the public internet so
 # Let's Encrypt can't fetch http://your-domain/.well-known/acme-challenge/...
 # Try it yourself:
-curl -v http://vijaygiduthuri.in/.well-known/acme-challenge/test
+curl -v http://steveops.site/.well-known/acme-challenge/test
 # Expect: 404 (the challenge token doesn't exist yet — but the request reached Traefik).
 # Connection refused / timeout = port 80 blocked upstream.
 ```
@@ -431,54 +429,54 @@ spec:
     - websecure                                            # 👈 was: web
   routes:
     # --- menu sub-paths (higher priority) ---
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathRegexp(`^/api/restaurants/[^/]+/(menu|categories|items)`)
+    - match: (Host(`steveops.site`)) && PathRegexp(`^/api/restaurants/[^/]+/(menu|categories|items)`)
       kind: Rule
       priority: 200
       services:
         - {name: menu-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/menu`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/menu`)
       kind: Rule
       priority: 200
       services:
         - {name: menu-service, port: 8080}
     # --- one rule per service ---
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/auth`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/auth`)
       kind: Rule
       priority: 100
       services:
         - {name: auth-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/users`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/users`)
       kind: Rule
       priority: 100
       services:
         - {name: user-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/restaurants`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/restaurants`)
       kind: Rule
       priority: 100
       services:
         - {name: restaurant-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && (PathPrefix(`/api/cart`) || PathPrefix(`/api/orders`))
+    - match: (Host(`steveops.site`)) && (PathPrefix(`/api/cart`) || PathPrefix(`/api/orders`))
       kind: Rule
       priority: 100
       services:
         - {name: order-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/payments`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/payments`)
       kind: Rule
       priority: 100
       services:
         - {name: payment-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/deliveries`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/deliveries`)
       kind: Rule
       priority: 100
       services:
         - {name: delivery-service, port: 8080}
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/api/notifications`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/api/notifications`)
       kind: Rule
       priority: 100
       services:
         - {name: notification-service, port: 8080}
     # --- frontend catch-all (lowest priority) ---
-    - match: (Host(`vijaygiduthuri.in`) || Host(`136.112.45.103`)) && PathPrefix(`/`)
+    - match: (Host(`steveops.site`)) && PathPrefix(`/`)
       kind: Rule
       priority: 1
       services:
@@ -500,15 +498,15 @@ kubectl -n cloudkitchen get ingressroute cloudkitchen \
 ### Smoke test
 
 ```bash
-curl -sI "https://vijaygiduthuri.in/" | head -1
+curl -sI "https://steveops.site/" | head -1
 # Expect: HTTP/2 200
 
-curl -s "https://vijaygiduthuri.in/api/restaurants" | head -c 200 ; echo
+curl -s "https://steveops.site/api/restaurants" | head -c 200 ; echo
 # Expect: JSON array of restaurants
 
 # All 10 microservice routes still work — try a couple more:
-curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://vijaygiduthuri.in/api/auth/health"
-curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://vijaygiduthuri.in/api/menu"
+curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://steveops.site/api/auth/health"
+curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://steveops.site/api/menu"
 ```
 
 🎉 The app is now on **HTTPS with a real browser-trusted certificate**.
@@ -535,7 +533,7 @@ curl -s -o /dev/null -w "HTTP %{http_code}\n" "https://vijaygiduthuri.in/api/men
 
 ## Step 5 — Move ArgoCD / Grafana / Prometheus / Alertmanager to HTTPS
 
-Right now those four UIs are reachable at `http://vijaygiduthuri.in/argocd/`,
+Right now those four UIs are reachable at `http://steveops.site/argocd/`,
 `/grafana/`, `/prometheus/`, `/alertmanager/`. To move them to HTTPS, two
 things change:
 
@@ -591,7 +589,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/grafana`)
+    - match: Host(`steveops.site`) && PathPrefix(`/grafana`)
       kind: Rule
       services:
         - name: monitoring-grafana
@@ -615,7 +613,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/prometheus`)
+    - match: Host(`steveops.site`) && PathPrefix(`/prometheus`)
       kind: Rule
       services:
         - name: kube-prometheus-prometheus
@@ -639,7 +637,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/alertmanager`)
+    - match: Host(`steveops.site`) && PathPrefix(`/alertmanager`)
       kind: Rule
       services:
         - name: kube-prometheus-alertmanager
@@ -667,7 +665,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/argocd`)
+    - match: Host(`steveops.site`) && PathPrefix(`/argocd`)
       kind: Rule
       services:
         - name: argocd-server
@@ -713,11 +711,11 @@ curl -sL  "https://$DOMAIN/alertmanager/-/ready"
 Open each in a browser — you should see the **🔒 padlock** with a
 browser-trusted (Let's Encrypt R10/R11 issuer) cert:
 
-- https://vijaygiduthuri.in/                  → React UI
-- https://vijaygiduthuri.in/argocd/           → ArgoCD UI (admin / your bootstrap password)
-- https://vijaygiduthuri.in/grafana/          → Grafana (admin / prom-operator)
-- https://vijaygiduthuri.in/prometheus/       → Prometheus
-- https://vijaygiduthuri.in/alertmanager/     → Alertmanager
+- https://steveops.site/                  → React UI
+- https://steveops.site/argocd/           → ArgoCD UI (admin / your bootstrap password)
+- https://steveops.site/grafana/          → Grafana (admin / prom-operator)
+- https://steveops.site/prometheus/       → Prometheus
+- https://steveops.site/alertmanager/     → Alertmanager
 
 All five served over **HTTPS with a real browser-trusted certificate**. 🔒
 
@@ -725,7 +723,7 @@ All five served over **HTTPS with a real browser-trusted certificate**. 🔒
 
 ## Step 7 — Redirect HTTP → HTTPS (catch-all)
 
-If you `curl http://vijaygiduthuri.in/` right now you'll see:
+If you `curl http://steveops.site/` right now you'll see:
 
 ```
 404 page not found
@@ -787,17 +785,17 @@ kubectl apply -f /tmp/http-to-https-redirect.yaml
 # Each path should now return 308 with Location: https://…
 for path in / argocd/ grafana/login prometheus/-/ready alertmanager/-/ready; do
   printf "%-30s -> " "http://...${path}"
-  curl -sI "http://vijaygiduthuri.in/${path#/}" \
+  curl -sI "http://steveops.site/${path#/}" \
     | awk '/^HTTP|^[Ll]ocation:/ {printf "%s ", $0}' ; echo
 done
-# Expect for each:  HTTP/1.1 308 Permanent Redirect  Location: https://vijaygiduthuri.in/...
+# Expect for each:  HTTP/1.1 308 Permanent Redirect  Location: https://steveops.site/...
 
 # And follow the redirect — should land on 200 over HTTPS
 for path in / argocd/ grafana/login prometheus/-/ready alertmanager/-/ready; do
   printf "%-30s -> %s\n" "http://...${path}" \
-    "$(curl -sIL -o /dev/null -w '%{http_code} %{url_effective}' "http://vijaygiduthuri.in/${path#/}")"
+    "$(curl -sIL -o /dev/null -w '%{http_code} %{url_effective}' "http://steveops.site/${path#/}")"
 done
-# Expect:  200 https://vijaygiduthuri.in/...  for every path
+# Expect:  200 https://steveops.site/...  for every path
 ```
 
 ### Why this works without breaking Let's Encrypt renewal
@@ -856,7 +854,7 @@ Final smoke test (HTTPS round-trip on all 5 endpoints):
 ```bash
 for URL in / /argocd/ /grafana/login /prometheus/-/ready /alertmanager/-/ready; do
   printf "%-30s  -> " "$URL"
-  curl -sIL -o /dev/null -w "HTTP %{http_code}\n" "https://vijaygiduthuri.in$URL"
+  curl -sIL -o /dev/null -w "HTTP %{http_code}\n" "https://steveops.site$URL"
 done
 ```
 
@@ -869,14 +867,14 @@ done
 - ✅ Chart flipped to HTTPS via the existing `ingress.tls` toggle — no chart-template edits needed
 - ✅ **All 5 UIs** (app, ArgoCD, Grafana, Prometheus, Alertmanager) reachable under the **same domain** over HTTPS
 
-You now have a **production-shape** GKE deployment:
+You now have a **production-shape** EKS deployment:
 
 ```
-https://vijaygiduthuri.in                📱 the app
-https://vijaygiduthuri.in/argocd         🚀 GitOps controller
-https://vijaygiduthuri.in/grafana        📊 dashboards
-https://vijaygiduthuri.in/prometheus     📈 metrics
-https://vijaygiduthuri.in/alertmanager   🚨 alerts
+https://steveops.site                📱 the app
+https://steveops.site/argocd         🚀 GitOps controller
+https://steveops.site/grafana        📊 dashboards
+https://steveops.site/prometheus     📈 metrics
+https://steveops.site/alertmanager   🚨 alerts
 ```
 
 ---
@@ -900,18 +898,18 @@ kubectl -n cloudkitchen delete pvc -l app=nats
 kubectl -n monitoring  delete pvc --all
 kubectl -n logging     delete pvc --all
 
-# 3. Release the static LB IP (otherwise GCP keeps billing ~$7/month)
+# 3. Release the static LB IP (otherwise EKS keeps billing ~$7/month)
 gcloud compute addresses delete traefik-lb-ip --region=us-central1
 
 # 4. Destroy the GCP infra
-cd gcp-terraform && terraform destroy
+cd aws-terraform && terraform destroy
 ```
 
 Billing drops to ~$0/day within ~10 minutes once `terraform destroy` finishes.
 
 ---
 
-🏁 **You did it.** The full DevOps lifecycle in seven phases on GKE:
+🏁 **You did it.** The full DevOps lifecycle in seven phases on EKS:
 **infra → ingress → CI → CD → DNS → observability → HTTPS**.
 
 Go put this on your resume.
