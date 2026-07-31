@@ -898,10 +898,8 @@ kubectl -n cloudkitchen delete pvc -l app=nats
 kubectl -n monitoring  delete pvc --all
 kubectl -n logging     delete pvc --all
 
-# 3. Release the static LB IP (otherwise EKS keeps billing ~$7/month)
-gcloud compute addresses delete traefik-lb-ip --region=us-central1
 
-# 4. Destroy the GCP infra
+# 4. Destroy the AWS infra
 cd aws-terraform && terraform destroy
 ```
 
