@@ -685,7 +685,7 @@ expects the `/argocd` prefix on incoming requests.
 ## Step 6 — Verify all 5 URLs over HTTPS
 
 ```bash
-DOMAIN=vijaygiduthuri.in
+DOMAIN=steveops.site
 
 # 1. App UI
 curl -sI "https://$DOMAIN/"                       | head -1
@@ -819,7 +819,7 @@ for the challenge traffic only. Everything else still 308s to HTTPS.
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `Certificate` stuck `READY=False` for >5 min | Let's Encrypt HTTP-01 can't reach `http://vijaygiduthuri.in/.well-known/acme-challenge/…` | Confirm port 80 is open: `curl http://vijaygiduthuri.in/.well-known/acme-challenge/test` should return 404 (not "connection refused"). `kubectl get challenges -A` shows the exact URL Let's Encrypt is probing — curl it from your laptop. |
+| `Certificate` stuck `READY=False` for >5 min | Let's Encrypt HTTP-01 can't reach `http://steveops.site/.well-known/acme-challenge/…` | Confirm port 80 is open: `curl http://steveops.site/.well-known/acme-challenge/test` should return 404 (not "connection refused"). `kubectl get challenges -A` shows the exact URL Let's Encrypt is probing — curl it from your laptop. |
 | Browser shows "NET::ERR_CERT_AUTHORITY_INVALID" or warns | Either the certificate isn't ready yet OR you're hitting Traefik via an IP without the matching `Host:` header (Traefik then serves a self-signed default cert) | Confirm `kubectl -n cloudkitchen get certificate cloudkitchen-tls` shows `READY=True`, and curl with the hostname (`curl https://vijaygiduthuri.in/`), not the IP. |
 | Rate-limited by Let's Encrypt (5 certs / week / domain) | You hit issuance failures in a loop or recreated the Certificate multiple times | Wait an hour (the rate window is rolling). Or temporarily point the Issuer's `server:` URL at the staging API (`https://acme-staging-v02.api.letsencrypt.org/directory`) while debugging — staging is unlimited but emits untrusted certs. |
 | `kubectl get challenges` shows the challenge stuck "pending" | cert-manager's HTTP-01 solver IngressRoute clashed with something | `kubectl -n cert-manager delete order --all` (forces a fresh attempt). If it keeps failing, check `kubectl -n cert-manager logs deploy/cert-manager` for the specific error. |
