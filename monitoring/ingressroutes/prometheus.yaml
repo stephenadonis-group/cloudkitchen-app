@@ -16,7 +16,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/prometheus`)
+    - match: Host(`steveops.site`) && PathPrefix(`/prometheus`)
       kind: Rule
       services:
         - name: kube-prometheus-prometheus
