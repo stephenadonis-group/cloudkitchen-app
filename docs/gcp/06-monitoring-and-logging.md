@@ -1,4 +1,4 @@
-# Phase 6 — Monitoring + Logging (GCP)
+# Phase 6 — Monitoring + Logging (EKS)
 
 **Goal:** Add a full observability stack — **Prometheus** (metrics), **Grafana**
 (dashboards), **Alertmanager** (alerts), **Loki** (logs), **Promtail** (log
@@ -68,7 +68,7 @@ sub-paths of your existing domain.
 | ------------------------------------------------- | ----------------------------------------------------------------------- |
 | Phase 5 done (DNS works, app reachable at hostname) | `curl -sI http://vijaygiduthuri.in/`  → HTTP 200                       |
 | Cluster has CPU/memory headroom                   | `kubectl top nodes`  → both nodes < 50% CPU + memory                    |
-| Storage class `standard-rwo` available            | `kubectl get storageclass`  → `standard-rwo` should exist (GKE default) |
+| Storage class `gp3` available            | `kubectl get storageclass`  → `gp3` EKS  |
 
 ---
 
