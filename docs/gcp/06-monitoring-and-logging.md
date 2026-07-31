@@ -9,9 +9,9 @@ sub-paths of your existing domain.
 (Prometheus + Alertmanager each provision a PVC and a StatefulSet).
 
 > Before this phase: cluster has the app + ArgoCD + Traefik. No metrics, no logs.
-> After:  http://vijaygiduthuri.in/grafana/      — dashboards
->         http://vijaygiduthuri.in/prometheus/   — Prometheus UI
->         http://vijaygiduthuri.in/alertmanager/ — Alertmanager UI
+> After:  http://steveops.site/grafana/      — dashboards
+>         http://steveops.site/prometheus/   — Prometheus UI
+>         http://steveops.site/alertmanager/ — Alertmanager UI
 >         Logs from every Pod stream into Loki, queryable from Grafana.
 
 ---
@@ -96,8 +96,8 @@ stays the same).
             enabled: false         # 👈 we use a Traefik IngressRoute instead
           grafana.ini:
             server:
-              domain: vijaygiduthuri.in
-              root_url: "http://vijaygiduthuri.in/grafana/"
+              domain: steveops.site
+              root_url: "steveops.site/grafana/"
               serve_from_sub_path: true
           additionalDataSources:
             - name: Loki           # 👈 auto-add Loki as a Grafana datasource
@@ -121,7 +121,7 @@ stays the same).
           prometheusSpec:
             retention: 15d
             routePrefix: /prometheus                            # 👈
-            externalUrl: http://vijaygiduthuri.in/prometheus    # 👈
+            externalUrl: http://steveops.site/prometheus    # 👈
             serviceMonitorSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
             resources:
@@ -142,7 +142,7 @@ stays the same).
           enabled: true
           alertmanagerSpec:
             routePrefix: /alertmanager                           # 👈
-            externalUrl: http://vijaygiduthuri.in/alertmanager   # 👈
+            externalUrl: http://steveops.site/alertmanager   # 👈
             resources:
               requests: {cpu: 25m,  memory: 64Mi}
               limits:   {cpu: 100m, memory: 128Mi}
@@ -301,7 +301,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: (Host(`vijaygiduthuri.in`) || Host(`35.224.38.103`)) && PathPrefix(`/grafana`)
+    - match: (Host(`steveops.site`) || Host(`35.224.38.103`)) && PathPrefix(`/grafana`)
       kind: Rule
       services:
         - name: monitoring-grafana
@@ -320,7 +320,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: (Host(`vijaygiduthuri.in`) || Host(`35.224.38.103`)) && PathPrefix(`/prometheus`)
+    - match: (Host(`steveops.site`) || Host(`35.224.38.103`)) && PathPrefix(`/prometheus`)
       kind: Rule
       services:
         - name: kube-prometheus-prometheus
@@ -339,7 +339,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: (Host(`vijaygiduthuri.in`) || Host(`35.224.38.103`)) && PathPrefix(`/alertmanager`)
+    - match: (Host(`steveops.site`) || Host(`35.224.38.103`)) && PathPrefix(`/alertmanager`)
       kind: Rule
       services:
         - name: kube-prometheus-alertmanager
@@ -377,15 +377,15 @@ kubectl -n monitoring get ingressroute
 ### Verify access
 
 ```bash
-curl -sIL -o /dev/null -w "/grafana/      -> HTTP %{http_code}\n" "http://vijaygiduthuri.in/grafana/"
-curl -sIL -o /dev/null -w "/prometheus/   -> HTTP %{http_code}\n" "http://vijaygiduthuri.in/prometheus/"
+curl -sIL -o /dev/null -w "/grafana/      -> HTTP %{http_code}\n" "http://steveops.site/grafana/"
+curl -sIL -o /dev/null -w "/prometheus/   -> HTTP %{http_code}\n" "http://steveops.site/prometheus/"
 curl -sL "http://vijaygiduthuri.in/alertmanager/-/ready"   # prints "OK"
 ```
 
 Open in browser:
-- **Grafana:** http://vijaygiduthuri.in/grafana/  — login `admin / prom-operator`
-- **Prometheus:** http://vijaygiduthuri.in/prometheus/
-- **Alertmanager:** http://vijaygiduthuri.in/alertmanager/
+- **Grafana:** http://steveops.site/grafana/  — login `admin / prom-operator`
+- **Prometheus:** http://steveops.site/prometheus/
+- **Alertmanager:** http://steveops.site/alertmanager/
 
 > ⚠️ The default Grafana password is `prom-operator`. **Change it on first
 > login** (User Icon → Profile → Change Password) and then optionally
@@ -597,14 +597,14 @@ Each dashboard has a stable UID (`ck-<service>`):
 
 | Service              | URL                                                                                  |
 | -------------------- | ------------------------------------------------------------------------------------ |
-| auth-service         | http://vijaygiduthuri.in/grafana/d/ck-auth-service/cloudkitchen-auth-service         |
-| user-service         | http://vijaygiduthuri.in/grafana/d/ck-user-service/cloudkitchen-user-service         |
-| restaurant-service   | http://vijaygiduthuri.in/grafana/d/ck-restaurant-service/cloudkitchen-restaurant-service |
-| menu-service         | http://vijaygiduthuri.in/grafana/d/ck-menu-service/cloudkitchen-menu-service         |
-| order-service        | http://vijaygiduthuri.in/grafana/d/ck-order-service/cloudkitchen-order-service       |
-| payment-service      | http://vijaygiduthuri.in/grafana/d/ck-payment-service/cloudkitchen-payment-service   |
+| auth-service         | http://steveops.site/grafana/d/ck-auth-service/cloudkitchen-auth-service         |
+| user-service         | http://steveops.site/grafana/d/ck-user-service/cloudkitchen-user-service         |
+| restaurant-service   | http://steveops.site/grafana/d/ck-restaurant-service/cloudkitchen-restaurant-service |
+| menu-service         | http://steveops.site/grafana/d/ck-menu-service/cloudkitchen-menu-service         |
+| order-service        | http://steveops.site/grafana/d/ck-order-service/cloudkitchen-order-service       |
+| payment-service      | http://steveops.site/grafana/d/ck-payment-service/cloudkitchen-payment-service   |
 | delivery-service     | http://vijaygiduthuri.in/grafana/d/ck-delivery-service/cloudkitchen-delivery-service |
-| notification-service | http://vijaygiduthuri.in/grafana/d/ck-notification-service/cloudkitchen-notification-service |
+| notification-service | http://steveops.site/grafana/d/ck-notification-service/cloudkitchen-notification-service |
 
 ### 8e — How to customize (or add a new service)
 
@@ -916,7 +916,7 @@ Equivalent to Query 6.
 
 ## Alertmanager
 
-Open the Alertmanager UI at **http://vijaygiduthuri.in/alertmanager/** to see:
+Open the Alertmanager UI at **http://steveops.site/alertmanager/** to see:
 
 - **Active alerts** (firing)
 - **Silenced alerts**
