@@ -16,7 +16,7 @@ spec:
   entryPoints:
     - web
   routes:
-    - match: Host(`vijaygiduthuri.in`) && PathPrefix(`/grafana`)
+    - match: Host(`steveops.site`) && PathPrefix(`/grafana`)
       kind: Rule
       services:
         - name: monitoring-grafana
