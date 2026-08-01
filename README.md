@@ -12,6 +12,56 @@
 > microservices plus a React frontend, deployed to **AWS EKS or Google GKE**
 > via **GitOps** with a full observability and security baseline.
 
+## 📸 Screenshots
+
+### Architecture
+
+![Architecture](docs/images/architecture.png)
+
+---
+
+### Home Page
+
+![Application](docs/images/application-homepage.png)
+
+---
+
+### Kubernetes Pods
+
+![Pods](docs/images/eks-pods.png)
+
+---
+
+### Argo CD
+
+![ArgoCD](docs/images/argocd-dashboard.png)
+
+---
+
+### Grafana Dashboard
+
+![Grafana](docs/images/grafana-dashboard.png)
+
+---
+
+### Prometheus
+
+![Prometheus](docs/images/prometheus-targets.png)
+
+---
+
+### Loki Logs
+
+![Loki](docs/images/loki-logs.png)
+
+---
+
+### GitHub Actions
+
+![GitHub Actions](docs/images/github-actions.png)
+
+
+
 CloudKitchen is a portfolio-grade reference platform demonstrating microservice
 design, async messaging, infrastructure-as-code, GitOps delivery, and
 production-style monitoring/logging/security.
