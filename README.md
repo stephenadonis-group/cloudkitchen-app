@@ -14,53 +14,40 @@
 
 ## 📸 Screenshots
 
-### Architecture
-
-![Architecture](docs/images/architecture.png)
-
 ---
 
 ### Home Page
 
-![Application](docs/images/application-homepage.png)
+![Application](docs/assets/application-homepage.JPG)
 
 ---
-
-### Kubernetes Pods
-
-![Pods](docs/images/eks-pods.png)
-
+![Application Demo](docs/assets/demo.gif)
 ---
 
 ### Argo CD
 
-![ArgoCD](docs/images/argocd-dashboard.png)
+![ArgoCD](docs/assets/argocd.JPG)
 
+![ArgoCD](docs/assets/argocd1.JPG)
 ---
 
 ### Grafana Dashboard
 
-![Grafana](docs/images/grafana-dashboard.png)
+![Grafana](docs/assets/grafana-dashboard.JPG)
 
 ---
 
 ### Prometheus
 
-![Prometheus](docs/images/prometheus-targets.png)
+![Prometheus](docs/assets/prometheus-targets.JPG)
 
 ---
 
 ### Loki Logs
 
-![Loki](docs/images/loki-logs.png)
+![Loki](docs/assets/loki-logs.JPG)
 
 ---
-
-### GitHub Actions
-
-![GitHub Actions](docs/images/github-actions.png)
-
-
 
 CloudKitchen is a portfolio-grade reference platform demonstrating microservice
 design, async messaging, infrastructure-as-code, GitOps delivery, and
