@@ -12,8 +12,12 @@
 > microservices plus a React frontend, deployed to **AWS EKS or Google GKE**
 > via **GitOps** with a full observability and security baseline.
 
-## 📸 Screenshots
+## 🎥 Project Video
 
+▶️ https://youtu.be/xod5gkBMBI8
+
+---
+## 📸 Screenshots
 ---
 
 ### Home Page
